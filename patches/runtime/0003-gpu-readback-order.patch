@@ -1,0 +1,28 @@
+diff --git a/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs b/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
+index e8d2299..cc44fbd 100644
+--- a/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
++++ b/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
+@@ -203,6 +203,23 @@ public sealed class InterpBackend : IGpuBackend
+     public void ReadVram(int x, int y, int w, int h, Span<ushort> px)
+     {
+         Settle();
++        lock (_gate)
++        {
++            while (_ready.Count > 0)
++            {
++                var pending = _ready.Dequeue();
++                Replay(pending, null, 1f);
++                Recycle(pending);
++            }
++            if (!_recording.IsEmpty)
++            {
++                Replay(_recording, null, 1f);
++                _recording.Clear();
++                _recording.Interpolatable = false;
++                _groups.Clear();
++            }
++            _previous.Interpolatable = false;
++        }
+         
+         _inner.ReadVram(x, y, w, h, px);
+     }

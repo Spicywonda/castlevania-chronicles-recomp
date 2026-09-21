@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="generated/**/*.cs" />
+    <Compile Include="patches/**/*.cs" />
+    <ProjectReference Include="vendor/RecompOne/RecompOne.Runtime/RecompOne.Runtime.csproj" />
+  </ItemGroup>
+  <Target Name="RequireGeneratedGame" BeforeTargets="CoreCompile">
+    <Error Condition="!Exists('generated/Entry.cs')" Text="Run scripts/recompile.sh with the USA SLUS-01384 disc before building." />
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-sprite-visibility.py&quot;" />
+  </Target>
+</Project>

@@ -1,0 +1,94 @@
+{
+  "game": {
+    "id": "SLUS-01384",
+    "name": "CastlevaniaChronicles",
+    "output": "../generated"
+  },
+  "cue": "../disc/chronicles.cue",
+  "funcMap": "funcmaps/main.json",
+  "linearSweep": true,
+  "overlays": [
+    {
+      "name": "boot",
+      "file": "DRACULA.PAC",
+      "offset": 980992,
+      "size": 124928,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "8010C7E4"
+        }
+      ]
+    },
+    {
+      "name": "stage1",
+      "file": "DRACULA.PAC",
+      "offset": 0,
+      "size": 116736,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "801021F4"
+        }
+      ]
+    }
+  ],
+  "patches": [
+    {
+      "overlay": "main",
+      "function": "VSync",
+      "mode": "pre",
+      "target": "Chronicles.BootDiagnostics.BeforeVSync"
+    },
+    {
+      "overlay": "main",
+      "function": "GsSortFastBg",
+      "mode": "pre",
+      "target": "Chronicles.BootDiagnostics.BeforeBackground"
+    },
+    {
+      "overlay": "main",
+      "function": "GsSortFastBg",
+      "mode": "post",
+      "target": "Chronicles.BootDiagnostics.AfterBackground"
+    },
+    {
+      "overlay": "main",
+      "function": "func_800429F8",
+      "mode": "pre",
+      "target": "Chronicles.BootDiagnostics.BeforeStore"
+    },
+    {
+      "overlay": "main",
+      "function": "func_800429F8",
+      "mode": "post",
+      "target": "Chronicles.BootDiagnostics.AfterStore"
+    },
+    {
+      "overlay": "main",
+      "function": "func_8004E480",
+      "mode": "pre",
+      "target": "Chronicles.TileMargins.Before31"
+    },
+    {
+      "overlay": "main",
+      "function": "func_8004E480",
+      "mode": "post",
+      "target": "Chronicles.TileMargins.After"
+    },
+    {
+      "overlay": "main",
+      "function": "func_8004E8B8",
+      "mode": "pre",
+      "target": "Chronicles.TileMargins.Before32"
+    },
+    {
+      "overlay": "main",
+      "function": "func_8004E8B8",
+      "mode": "post",
+      "target": "Chronicles.TileMargins.After"
+    }
+  ]
+}

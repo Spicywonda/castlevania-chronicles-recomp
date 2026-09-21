@@ -1,0 +1,29 @@
+diff --git a/RecompOne.Runtime/sdk/LibCd.cs b/RecompOne.Runtime/sdk/LibCd.cs
+index 1c4765f..90b8b95 100644
+--- a/RecompOne.Runtime/sdk/LibCd.cs
++++ b/RecompOne.Runtime/sdk/LibCd.cs
+@@ -893,10 +893,15 @@ public static class LibCd
+ 
+     public static void CdGetSector(CpuContext c, IMemory m)
+     {
++        if (LibDs.Active && LibDs.SectorLba >= 0)
++        {
++            LibDs.DsGetSector(c, m);
++            return;
++        }
++
+         var madr = c.A0;
+         var words = (int)c.A1;
+-        var lba = LibDs.Active && LibDs.SectorLba >= 0 ? LibDs.SectorLba
+-            : _int1Lba >= 0 ? _int1Lba : CurrentLba;
++        var lba = _int1Lba >= 0 ? _int1Lba : CurrentLba;
+         byte[] data;
+         lock (DiscLock)
+         {
+@@ -1390,4 +1395,4 @@ public static class LibCd
+         ss = ToBcd(i / 75 % 60);
+         mm = ToBcd(i / 75 / 60);
+     }
+-}
+\ No newline at end of file
++}

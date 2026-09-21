@@ -1,0 +1,208 @@
+diff --git a/RecompOne.Runtime/Hardware/Interrupts.cs b/RecompOne.Runtime/Hardware/Interrupts.cs
+index be053b3..0bbb642 100644
+--- a/RecompOne.Runtime/Hardware/Interrupts.cs
++++ b/RecompOne.Runtime/Hardware/Interrupts.cs
+@@ -106,6 +106,7 @@ public static class Interrupts
+         _countdown = PollInterval;
+         TickVBlank();
+         Runtime.Timers?.Poll(RaiseTimer);
++        if (Runtime.Spu?.ConsumeIrq() == true) Raise(9);
+         if (_inHandler || _servicing || !_irqEnabled) return;
+ 
+         var snap = cpu.Snapshot();
+@@ -120,6 +121,7 @@ public static class Interrupts
+         finally
+         {
+             cpu.Restore(snap);
++            Runtime.Spu?.CompleteIrqService();
+         }
+     }
+ 
+@@ -332,4 +334,4 @@ public static class Interrupts
+     {
+         _istat &= ~(1u << irq);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/RecompOne.Runtime/Hardware/Spu.cs b/RecompOne.Runtime/Hardware/Spu.cs
+index 081fb13..ea6fe0b 100644
+--- a/RecompOne.Runtime/Hardware/Spu.cs
++++ b/RecompOne.Runtime/Hardware/Spu.cs
+@@ -286,6 +286,10 @@ public sealed class Spu
+     private ushort _eon, _eonHi;
+     private uint _endx;
+     private ushort _spucnt;
++    private ushort _irqAddress;
++    private bool _irqFlag;
++    private bool _irqDeliveryPending;
++    private bool _irqServicePending;
+     private ushort _transferAddr;
+     private ushort _transferCtrl = 4;
+     private ushort _cdVolL, _cdVolR;
+@@ -369,11 +373,12 @@ public sealed class Spu
+             0x19C => (ushort)(_endx & 0xFFFF),
+             0x19E => (ushort)(_endx >> 16),
+             0x1A2 => _reverbStartAddr,
++            0x1A4 => _irqAddress,
+             >= 0x1C0 and <= 0x1FE => _rev[(off - 0x1C0) >> 1],
+             0x1A6 => _transferAddr,
+             0x1AA => _spucnt,
+             0x1AC => _transferCtrl,
+-            0x1AE => (ushort)(_spucnt & 0x3F),
++            0x1AE => (ushort)((_spucnt & 0x3F) | (_irqFlag ? 0x40 : 0)),
+             0x1B0 => _cdVolL,
+             0x1B2 => _cdVolR,
+             0x1B4 => _extVolL,
+@@ -446,8 +451,16 @@ public sealed class Spu
+             case 0x198: _eon = val; break;
+             case 0x19A: _eonHi = val; break;
+             case 0x1A2: _reverbStartAddr = val; break;
++            case 0x1A4: _irqAddress = val; break;
+             case 0x1A6: _transferAddr = val; break;
+-            case 0x1AA: _spucnt = val; break;
++            case 0x1AA:
++                _spucnt = val;
++                if ((val & 0x40) == 0)
++                {
++                    _irqFlag = false;
++                    _irqDeliveryPending = false;
++                }
++                break;
+             case 0x1AC: _transferCtrl = val; break;
+             case 0x1B0: _cdVolL = val; break;
+             case 0x1B2: _cdVolR = val; break;
+@@ -565,6 +578,65 @@ public sealed class Spu
+         {
+             for (var i = 0; i < data.Length; i++)
+                 Ram[(spuByteAddr + (uint)i) & (RamSize - 1)] = data[i];
++            if (_audioTiming && data.Length > 0)
++            {
++                _blockGeneration ??= new uint[RamSize / 16];
++                var generation = ++_dmaGeneration;
++                for (var i = 0; i < data.Length; i++)
++                    _blockGeneration![(spuByteAddr + (uint)i & (RamSize - 1)) / 16] = generation;
++            }
++            CheckIrq(spuByteAddr, (uint)data.Length);
++        }
++    }
++
++    private readonly bool _audioTiming = Environment.GetEnvironmentVariable("RECOMP_AUDIO_CAPTURE") == "1";
++    private uint _dmaGeneration;
++    private uint[]? _blockGeneration;
++    private readonly List<(long Sample, uint Address, uint Generation, int Voice, ulong Data0, ulong Data1)> _audioBlocks = new();
++    internal void SaveAudioBlockTrace()
++    {
++        lock (_sync)
++        {
++            using var writer = new BinaryWriter(File.Create("audio-blocks.bin"));
++            foreach (var b in _audioBlocks)
++            {
++                writer.Write(b.Sample); writer.Write(b.Address); writer.Write(b.Generation);
++                writer.Write(b.Voice); writer.Write(b.Data0); writer.Write(b.Data1);
++            }
++        }
++    }
++    private long _mixedSamples, _irqSample, _irqCount, _irqMaxDelay, _irqLateCount;
++    internal object CaptureAudioTiming()
++    {
++        lock (_sync) return new { MixedSamples = _mixedSamples, IrqCount = _irqCount,
++            MaxDeliveryDelaySamples = _irqMaxDelay, DeliveriesOver896Samples = _irqLateCount };
++    }
++
++    private void CheckIrq(uint address, uint length)
++    {
++        if (_irqFlag || (_spucnt & 0x8040) != 0x8040 || length == 0) return;
++        var distance = (((uint)_irqAddress << 3) - address) & (RamSize - 1);
++        if (distance >= length) return;
++        _irqFlag = true;
++        _irqDeliveryPending = true;
++        _irqServicePending = true;
++        if (_audioTiming) _irqSample = _mixedSamples;
++    }
++
++    internal bool ConsumeIrq()
++    {
++        lock (_sync)
++        {
++            var pending = _irqDeliveryPending;
++            _irqDeliveryPending = false;
++            if (pending && _audioTiming)
++            {
++                var delay = _mixedSamples - _irqSample;
++                _irqCount++;
++                _irqMaxDelay = Math.Max(_irqMaxDelay, delay);
++                if (delay > 896) _irqLateCount++;
++            }
++            return pending;
+         }
+     }
+ 
+@@ -595,7 +667,31 @@ public sealed class Spu
+ 
+     private const int MixChunk = 16;
+ 
+-    public void Mix(short[] dst, int frames)
++    public void CompleteIrqService()
++    {
++        lock (_sync)
++        {
++            if (_irqFlag) return;
++            _irqServicePending = false;
++            Monitor.PulseAll(_sync);
++        }
++    }
++
++    public void WaitForIrqService(int timeoutMs)
++    {
++        var deadline = Environment.TickCount64 + timeoutMs;
++        lock (_sync)
++        {
++            while (_irqServicePending)
++            {
++                var remaining = deadline - Environment.TickCount64;
++                if (remaining <= 0) break;
++                Monitor.Wait(_sync, (int)remaining);
++            }
++        }
++    }
++
++    public void Mix(short[] dst, int frames, bool synchronizeIrq = false)
+     {
+         if (_xaL.Length < frames)
+         {
+@@ -607,6 +703,7 @@ public sealed class Spu
+ 
+         for (var chunk = 0; chunk < frames; chunk += MixChunk)
+         {
++            if (synchronizeIrq) WaitForIrqService(20);
+             var last = Math.Min(chunk + MixChunk, frames);
+ 
+             lock (_sync)
+@@ -617,6 +714,7 @@ public sealed class Spu
+                     SweepTick(_mainVolR, ref _mainCurR, ref _mainCycR);
+ 
+                     var (l, r) = Tick();
++                    if (_audioTiming) _mixedSamples++;
+                     int mixL = (l * _voiceGain) >> 15, mixR = (r * _voiceGain) >> 15;
+                     if (n < xaCount)
+                     {
+@@ -776,6 +874,11 @@ public sealed class Spu
+         v.Buf[2] = v.Buf[30];
+ 
+         var addr = v.CurAddr & (uint)(RamSize - 1);
++        CheckIrq(addr, 16);
++        if (_audioTiming && index >= 22 && addr <= RamSize - 16 && _audioBlocks.Count < 200000)
++            _audioBlocks.Add((_mixedSamples, addr, _blockGeneration?[addr / 16] ?? 0, index,
++                System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(Ram.AsSpan((int)addr, 8)),
++                System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(Ram.AsSpan((int)addr + 8, 8))));
+         var hdr = Ram[addr];
+         var flags = Ram[(addr + 1) & (RamSize - 1)];
+ 
+@@ -887,4 +990,4 @@ public sealed class Spu
+             if (_noiseTimer < 0) _noiseTimer += 0x20000 >> shift;
+         }
+     }
+-}
+\ No newline at end of file
++}

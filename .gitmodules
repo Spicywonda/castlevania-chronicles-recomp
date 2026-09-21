@@ -1,0 +1,3 @@
+[submodule "vendor/RecompOne"]
+	path = vendor/RecompOne
+	url = https://github.com/BlackLabelHQ/RecompOne.git

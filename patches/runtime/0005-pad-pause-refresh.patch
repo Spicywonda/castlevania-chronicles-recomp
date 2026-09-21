@@ -1,0 +1,19 @@
+diff --git a/RecompOne.Runtime/sdk/LibPad.cs b/RecompOne.Runtime/sdk/LibPad.cs
+index aa14770..50e8e2d 100644
+--- a/RecompOne.Runtime/sdk/LibPad.cs
++++ b/RecompOne.Runtime/sdk/LibPad.cs
+@@ -66,6 +66,7 @@ public static class LibPad
+ 
+     public static void PadGetState(CpuContext c, IMemory m)
+     {
++        Refresh(m);
+         c.V0 = IsPort1(c.A0) || Controller.Connected2 ? PadStateStable : PadStateDiscon;
+     }
+ 
+@@ -163,4 +164,4 @@ public static class LibPad
+         m.WriteU8(buf + 6, present ? lx : (byte)0x80);
+         m.WriteU8(buf + 7, present ? ly : (byte)0x80);
+     }
+-}
+\ No newline at end of file
++}
