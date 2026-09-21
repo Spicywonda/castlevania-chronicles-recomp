@@ -38,7 +38,7 @@ Each invocation creates a separate `artifacts/windows/build-XXXXXXXX/` directory
 
 The script applies the repository's runtime patches, publishes Release for `win-x64` with a self-contained runtime, and disables trimming, single-file bundling, and ReadyToRun. The runtime uses reflection and dynamic code; keeping ordinary assemblies and native DLLs avoids deployment assumptions that have not been validated. Packaging checks the executable, .NET host/runtime, SDL2, GLFW, ImGui, native file dialog, and OpenAL libraries for x64 Windows PE headers, and checks the self-contained runtime configuration.
 
-The ZIP excludes disc images and saves, but its compiled game assembly is derived from the original game. Development packages are published separately as prerelease assets; build outputs remain excluded from the source tree. You must provide the USA disc image at runtime.
+The ZIP excludes disc images and saves, but its compiled game assembly is derived from the original game. Development packages are published separately as release assets; build outputs remain excluded from the source tree. You must provide the USA disc image at runtime.
 
 ## Windows validation still needed
 
