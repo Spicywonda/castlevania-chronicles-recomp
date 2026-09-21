@@ -98,4 +98,5 @@ On an exception, RAM dumping writes `artifacts/runtime/crash-ram.bin`. Failure e
 - [macOS development plan](docs/plan-macos.md)
 - [Overlay and graphics investigation](docs/overlays.md)
 - [Audio investigation and validation](docs/audio.md)
+- [Pause/resume fix](docs/pause.md)
 - [Widescreen experiment](docs/widescreen.md)

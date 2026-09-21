@@ -43,3 +43,7 @@ The ZIP excludes disc images and saves, but its compiled game assembly is derive
 ## Windows validation still needed
 
 Check startup with a disc path containing spaces, first-stage gameplay, audio, keyboard/controller input, the pause menu, pause/resume, fullscreen, and memory-card save/load. Confirm that failed starts leave a useful `runtime/run.log`. Report the executable version and log with any failure; do not publicly upload disc data, generated game code, or RAM dumps.
+
+## Cross-publish verification
+
+On September 21, 2026, the publish command completed successfully on macOS for `win-x64`. Packaging verified x64 PE headers for the EXE, .NET host/runtime, SDL2, GLFW, ImGui, native file dialog, and OpenAL, and verified that the .NET runtime configuration is self-contained. The build includes the pause input-refresh patch and English UI defaults; widescreen remains disabled unless enabled through `CHRONICLES_WIDESCREEN=1`, which also enables the F8 comparison toggle. Compiler output included existing nullable warnings in runtime debug panels and unreachable-code warnings in generated game code. No Windows execution test has been performed.
