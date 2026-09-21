@@ -6,6 +6,14 @@ An experimental recompilation of the PlayStation USA release **SLUS-01384**, bui
 
 The Git tree contains project sources; development binaries are provided separately through [GitHub Releases](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases). You must supply your own disc image to generate the game code and run the application. Disc images, extracted assets, generated code, memory dumps, local toolchains, and build outputs must stay outside Git.
 
+## Downloads
+
+Development prereleases include separate downloads for Windows x64 and macOS Apple Silicon, each with a SHA-256 checksum. Both include .NET and require your own USA disc image.
+
+- [Windows package instructions](docs/windows.md)
+- [macOS app instructions](docs/macos.md)
+- [Download releases](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases)
+
 ## Requirements
 
 - macOS Apple Silicon for the currently tested development setup (Apple M3).

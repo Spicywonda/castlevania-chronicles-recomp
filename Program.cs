@@ -2,16 +2,17 @@ using RecompOne.Runtime.Config;
 using RecompOne.Runtime.Memory;
 using GameRuntime = RecompOne.Runtime.Runtime;
 
-if (args.Length != 1 || !File.Exists(args[0]))
+var chooseDisc = OperatingSystem.IsMacOS() && args.Length == 0;
+if (!chooseDisc && (args.Length != 1 || !File.Exists(args[0])))
 {
     Console.Error.WriteLine("Usage: CastlevaniaChronicles <path-to-USA-disc.cue>");
     return 2;
 }
 
-var cuePath = Path.GetFullPath(args[0]);
+var cuePath = chooseDisc ? null : Path.GetFullPath(args[0]);
 ConfigManager.Load();
 GameRuntime.Defaults(view => view.Language = "en");
-ConfigManager.Game.CdPath = cuePath;
+if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
 ConfigManager.SaveGame();
 var exitCode = 0;
 Chronicles.Widescreen.Initialize();
