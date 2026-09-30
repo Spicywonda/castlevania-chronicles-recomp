@@ -33,6 +33,19 @@
           "address": "801021F4"
         }
       ]
+    },
+    {
+      "name": "poststage1",
+      "file": "DRACULA.PAC",
+      "offset": 1105920,
+      "size": 22528,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "80100FE0"
+        }
+      ]
     }
   ],
   "patches": [

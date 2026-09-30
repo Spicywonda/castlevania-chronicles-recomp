@@ -1,8 +1,29 @@
+using RecompOne.Runtime.Cdrom;
 using RecompOne.Runtime.Config;
 using RecompOne.Runtime.Memory;
 using GameRuntime = RecompOne.Runtime.Runtime;
 
-var chooseDisc = OperatingSystem.IsMacOS() && args.Length == 0;
+if (args.Length == 2 && args[0] == "--validate-disc")
+{
+    try
+    {
+        using var disc = DiscFs.Open(args[1]);
+        if (!disc.Locate("SLUS_013.84", out _, out _))
+        {
+            Console.Error.WriteLine("La imagen no contiene Castlevania Chronicles USA (SLUS-01384).");
+            return 2;
+        }
+        Console.WriteLine("Disco USA SLUS-01384 verificado.");
+        return 0;
+    }
+    catch (Exception error)
+    {
+        Console.Error.WriteLine($"No se pudo validar el disco: {error.Message}");
+        return 2;
+    }
+}
+
+var chooseDisc = (OperatingSystem.IsMacOS() || OperatingSystem.IsWindows()) && args.Length == 0;
 if (!chooseDisc && (args.Length != 1 || !File.Exists(args[0])))
 {
     Console.Error.WriteLine("Usage: CastlevaniaChronicles <path-to-USA-disc.cue>");

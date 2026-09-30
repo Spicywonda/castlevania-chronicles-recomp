@@ -2,7 +2,7 @@
 
 An experimental recompilation of the PlayStation USA release **SLUS-01384**, built with [RecompOne](https://github.com/BlackLabelHQ/RecompOne).
 
-**Early development:** the first stage is playable on macOS Apple Silicon, with movement, combat, scenery, and audio confirmed in local testing. The Start/Enter pause hang is fixed; pause/resume was confirmed on macOS. Widescreen has reported visual corruption and object pop-in; it is experimental and disabled by default. Later stages, saving, and Windows/Linux gameplay have not been validated.
+**Early development:** the first stage is playable on macOS Apple Silicon, with movement, combat, scenery, and audio confirmed in local testing. Windows testing reached the bat boss; a crash after collecting the orb exposed a missing post-stage overlay, now included for retesting. The Start/Enter pause hang is fixed; pause/resume was confirmed on macOS. Widescreen has reported visual corruption and object pop-in; it is experimental and disabled by default. Later stages, saving, and Linux gameplay have not been validated.
 
 The Git tree contains project sources; development binaries are provided separately through [GitHub Releases](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases). You must supply your own disc image to generate the game code and run the application. Disc images, extracted assets, generated code, memory dumps, local toolchains, and build outputs must stay outside Git.
 

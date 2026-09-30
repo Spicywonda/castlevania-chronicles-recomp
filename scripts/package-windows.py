@@ -24,7 +24,7 @@ def main():
         raise SystemExit("Usage: package-windows.py <self-contained-win-x64-publish-directory>")
     publish_dir = Path(sys.argv[1]).resolve(strict=True)
     required_native = (
-        "CastlevaniaChronicles.exe", "coreclr.dll", "hostfxr.dll", "hostpolicy.dll",
+        "CastlevaniaChronicles.exe", "Play.exe", "coreclr.dll", "hostfxr.dll", "hostpolicy.dll",
         "SDL2.dll", "glfw3.dll", "cimgui.dll", "nfd.dll", "soft_oal.dll",
     )
     for name in required_native:
@@ -41,26 +41,12 @@ def main():
             raise ValueError(f"Unexpected disc, save, or symbolic link in publish directory: {path}")
     launcher = r'''@echo off
 setlocal
-set "cue_path=%~1"
-if not defined cue_path set "cue_path=%~dp0disc\chronicles.cue"
-for %%I in ("%cue_path%") do set "cue_path=%%~fI"
-if not exist "%cue_path%" (
-    echo Drag your USA SLUS-01384 CUE file onto this launcher.
-    echo Or put chronicles.cue and its referenced BIN files in the disc folder.
-    pause
-    exit /b 2
+if "%~1"=="" (
+    "%~dp0Play.exe"
+) else (
+    "%~dp0Play.exe" "%~1"
 )
-if not exist "%~dp0runtime" mkdir "%~dp0runtime"
-pushd "%~dp0runtime" || exit /b 1
-"%~dp0CastlevaniaChronicles.exe" "%cue_path%" > run.log 2>&1
-set "game_exit=%errorlevel%"
-if not "%game_exit%"=="0" (
-    type run.log
-    echo Game exited with code %game_exit%. See runtime\run.log.
-    pause
-)
-popd
-exit /b %game_exit%
+exit /b %errorlevel%
 '''
     (publish_dir / "Play.cmd").write_bytes(launcher.replace("\n", "\r\n").encode("utf-8"))
     project_root = Path(__file__).resolve().parent.parent
@@ -79,7 +65,7 @@ exit /b %game_exit%
     print(f"Verified Windows x64 PE files and self-contained runtime: {publish_dir}")
     print(f"Package: {archive_path}")
     print(f"SHA-256: {archive_hash}")
-    print("Windows execution remains unvalidated; this package was cross-published on macOS.")
+    print("Windows package cross-published on macOS; post-bat transition still requires Windows testing.")
 
 
 if __name__ == "__main__":

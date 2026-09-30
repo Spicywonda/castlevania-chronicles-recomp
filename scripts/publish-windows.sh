@@ -15,4 +15,11 @@ scripts/dotnet.sh publish CastlevaniaChronicles.csproj \
     -p:UseAppHost=true -p:PublishSingleFile=false -p:PublishTrimmed=false \
     -p:PublishReadyToRun=false -p:DebugType=None -p:DebugSymbols=false \
     -o "$publish_dir"
+scripts/dotnet.sh publish launcher/WindowsLauncher/WindowsLauncher.csproj \
+    -c Release -r win-x64 --self-contained true \
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:PublishTrimmed=false -p:PublishReadyToRun=false \
+    -p:DebugType=None -p:DebugSymbols=false \
+    -o "$build_root/launcher"
+cp "$build_root/launcher/Play.exe" "$publish_dir/Play.exe"
 python3 scripts/package-windows.py "$publish_dir"

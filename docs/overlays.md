@@ -58,6 +58,12 @@ The resulting build displayed Simon approaching the castle and logged `loaded ov
 
 Optional pre/post hooks, limited to 64 calls and enabled with `CHRONICLES_DIAGNOSTICS=1`, recorded maps and packets. A VSync diagnostic also captured VRAM.
 
+## Post-bat transition
+
+A Windows run reached the bat boss in both Original and Arrange. After collecting the orb, the main loop called `0x80100FE0` and failed on an unmapped read at `0xFFFFABE4`. That value came from the stage-one routine reading `S1 - 0x541C` with `S1=0`.
+
+The main executable's archive table points index 10 to LBA 711 for 11 sectors. The local USA image's bytes at `0x80100FE0` in this block begin with a stack frame prologue (`27BDFFE0`); the stage-one block at LBA 171 has different bytes there and expects state from an earlier routine. The project had registered only `boot` (index 9) and `stage1` (index 1), so after index 10 loaded into `0x80100000`, the dispatcher still chose the old stage-one function. The `poststage1` overlay registers archive offset 1,105,920, size 22,528, base `0x80100000`, and entry `0x80100FE0`. Cross-publishing and a generated-map check confirm the replacement is present; the transition still needs a Windows gameplay retest.
+
 ## Black scenery and VRAM readback ordering
 
 `GsSortFastBg` captures contained valid E1 plus 32×32 sprite packets and texture data, but empty palettes. StoreImage diagnostics found discrepancies between the prior CPU shadow and GPU readback: 3,894/8,192 colors at x960 and 3,109/8,192 at x976. `tests/GpuChecks` reproduced palette loss in four synthetic regions without game data.

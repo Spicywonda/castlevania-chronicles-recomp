@@ -1,49 +1,30 @@
 # Windows x64 development package
 
-This is an experimental Windows x64 build of the USA SLUS-01384 Castlevania Chronicles recompilation. The package includes its .NET runtime and native libraries. Keep the complete folder together; the EXE alone is insufficient. Windows execution, graphics, sound, input, pause/resume, and saving still require testing on a Windows computer. Cross-publishing and checking PE headers on macOS do not establish that the game runs on Windows.
+This experimental package contains the Castlevania Chronicles recompilation, a small Windows launcher, and a self-contained .NET runtime. You need your own USA SLUS-01384 disc image. Keep the extracted folder together; the EXE files alone are insufficient. The first stage reached the bat boss on a GTX 1060 in Windows testing. A crash after collecting the boss orb exposed a missing archive overlay; this build includes that overlay, but the transition has not yet been retested on Windows. Later stages, saving, and full-game compatibility remain unverified.
 
 ## Play
 
-1. Extract the ZIP into a writable local folder.
-2. Drag your legally obtained USA SLUS-01384 CUE file onto `Play.cmd`. Keep all BIN files referenced by the CUE beside that CUE, preserving their names. Alternatively, create a `disc` folder beside `Play.cmd`, place the CUE there as `chronicles.cue` with its BIN files, and double-click `Play.cmd`.
-3. The launcher stores settings, memory cards, and its latest `run.log` in the package's `runtime` folder. Preserve that folder when replacing the build.
+1. Extract the ZIP to a local folder.
+2. Double-click `Play.exe`.
+3. Click **Seleccionar ROM** and choose your USA CUE or CHD, then click **Jugar**. Keep every BIN named by a CUE beside it. The launcher remembers your selection on later starts.
+
+The disc is validated before the game starts. The launcher stores its selection, game settings, memory cards, and the latest `run.log` in `%LOCALAPPDATA%\CastlevaniaChroniclesRecomp`. **Abrir carpeta de logs** opens that folder. If disc validation fails, read `validate.log` in the same folder. After a gameplay failure, send `run.log` and the steps that led to it; do not send the ROM or a RAM dump. The old `Play.cmd` still forwards a dragged CUE/CHD to the new launcher. Direct `CastlevaniaChronicles.exe <image>` startup remains available for development, and opening the game EXE without arguments shows the in-game picker.
 
 No separate .NET installation is needed. A working Windows graphics driver and compatible OpenGL backend are required. This is an unsigned development executable.
 
-From a command prompt, the executable also accepts the disc path directly:
-
-```bat
-CastlevaniaChronicles.exe "C:\Games\Castlevania Chronicles\chronicles.cue"
-```
-
-Direct execution stores settings in the current working directory. Starting the EXE without a CUE argument prints usage and exits. Use the launcher for double-click or drag-and-drop startup and persistent error logs.
-
 ## Build on macOS or a compatible Bash environment
 
-Prerequisites: .NET SDK 10.0.401 (the repository's local installation is selected by `scripts/dotnet.sh`), Python 3, the pinned RecompOne submodule, and the generated C# game from the USA disc. The initial publish needs NuGet access to restore the Windows .NET runtime and apphost packs.
-
-From the repository root, generate the game if it has not already been generated:
+Prerequisites: .NET SDK 10.0.401 (selected by `scripts/dotnet.sh`), Python 3, the pinned RecompOne submodule, and the USA disc linked at `disc/chronicles.cue` with its BIN files. The initial publish needs NuGet access to restore Windows runtime and Windows Desktop targeting packs.
 
 ```sh
 ./scripts/recompile.sh
-```
-
-Then publish and package:
-
-```sh
 ./scripts/publish-windows.sh
 ```
 
-Each invocation creates a separate `artifacts/windows/build-XXXXXXXX/` directory containing `CastlevaniaChronicles-win-x64/`, its ZIP, and a SHA-256 checksum. The folder also contains a per-file checksum manifest. Do not build another target concurrently: the root project and runtime share intermediate build files.
+Each invocation creates a separate `artifacts/windows/build-XXXXXXXX/` directory with the package, ZIP, and SHA-256 checksum. The script applies the repository's runtime patches, publishes the game and single-file launcher for `win-x64`, and checks the PE headers and self-contained game runtime. Disc images, memory cards, and saves are excluded. Do not build another target concurrently because the projects share intermediate files.
 
-The script applies the repository's runtime patches, publishes Release for `win-x64` with a self-contained runtime, and disables trimming, single-file bundling, and ReadyToRun. The runtime uses reflection and dynamic code; keeping ordinary assemblies and native DLLs avoids deployment assumptions that have not been validated. Packaging checks the executable, .NET host/runtime, SDL2, GLFW, ImGui, native file dialog, and OpenAL libraries for x64 Windows PE headers, and checks the self-contained runtime configuration.
+The compiled game assembly is derived from the disc used for recompilation. This package is for development testing with your own matching USA image; it does not include a disc.
 
-The ZIP excludes disc images and saves, but its compiled game assembly is derived from the original game. Development packages are published separately as release assets; build outputs remain excluded from the source tree. You must provide the USA disc image at runtime.
+## Verification limits
 
-## Windows validation still needed
-
-Check startup with a disc path containing spaces, first-stage gameplay, audio, keyboard/controller input, the pause menu, pause/resume, fullscreen, and memory-card save/load. Confirm that failed starts leave a useful `runtime/run.log`. Report the executable version and log with any failure; do not publicly upload disc data, generated game code, or RAM dumps.
-
-## Cross-publish verification
-
-On September 21, 2026, the publish command completed successfully on macOS for `win-x64`. Packaging verified x64 PE headers for the EXE, .NET host/runtime, SDL2, GLFW, ImGui, native file dialog, and OpenAL, and verified that the .NET runtime configuration is self-contained. The build includes the pause input-refresh patch and English UI defaults; widescreen remains disabled unless enabled through `CHRONICLES_WIDESCREEN=1`, which also enables the F8 comparison toggle. Compiler output included existing nullable warnings in runtime debug panels and unreachable-code warnings in generated game code. No Windows execution test has been performed.
+A macOS cross-publish checks structure and dependencies, not Windows gameplay. On Windows, test the launcher with CUE/BIN and CHD, a path containing spaces, relaunch with the remembered path, first-stage gameplay, the boss orb transition, audio, controller/keyboard input, and memory-card save/load. Report the executable version, selected mode, reproduction steps, and `run.log` for a failure.
