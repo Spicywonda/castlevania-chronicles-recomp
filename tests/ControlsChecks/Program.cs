@@ -1,0 +1,30 @@
+using RecompOne.Runtime.Config;
+using RecompOne.Runtime.Host.Window;
+var originalDirectory=Environment.CurrentDirectory;
+var scratch=Path.Combine(Path.GetTempPath(),"chronicles-controls-"+Guid.NewGuid());
+Directory.CreateDirectory(scratch);
+try {
+    Environment.CurrentDirectory=scratch;
+    ConfigManager.Load();
+    ConfigManager.Game.Keys.Cross="Space";
+    ConfigManager.Game.Keys.Square="J";
+    ConfigManager.Game.Pad.Cross=[2,100];
+    ConfigManager.Game.PadAnalog.Square=[3];
+    ConfigManager.Game.Keys2.Cross="K";
+    ConfigManager.SaveGame();
+    ConfigManager.Game.Keys.Cross="Z";
+    ConfigManager.Game.Pad.Cross=[0];
+    ConfigManager.Load();
+    if(ConfigManager.Game.Keys.Cross!="Space" || ConfigManager.Game.Keys.Square!="J" || ConfigManager.Game.Keys2.Cross!="K") throw new Exception("Keyboard remaps did not persist");
+    Console.WriteLine("PASS Keyboard mappings persist across config reload");
+    if(!ConfigManager.Game.Pad.Cross.SequenceEqual(new[]{2,100}) || !ConfigManager.Game.PadAnalog.Square.SequenceEqual(new[]{3})) throw new Exception("Controller remaps did not persist");
+    Console.WriteLine("PASS Digital and analog controller mappings persist independently");
+    ConfigManager.Game.Keys=new KeyBindings();
+    ConfigManager.SaveGame();ConfigManager.Load();
+    if(ConfigManager.Game.Keys.Cross!="Z" || !ConfigManager.Game.Pad.Cross.SequenceEqual(new[]{2,100})) throw new Exception("Keyboard reset changed controller mappings");
+    Console.WriteLine("PASS Resetting keyboard preserves controller bindings");
+    Chronicles.Controls.Initialize();Chronicles.Controls.Initialize();
+    if(PopupManager.Get<Chronicles.ControlsPopup>()==null) throw new Exception("Controls popup missing");
+    Console.WriteLine("PASS Controls popup registered for shared menu");
+    return 0;
+} finally { Environment.CurrentDirectory=originalDirectory;Directory.Delete(scratch,true); }

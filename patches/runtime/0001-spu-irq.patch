@@ -26,10 +26,10 @@ index be053b3..0bbb642 100644
 \ No newline at end of file
 +}
 diff --git a/RecompOne.Runtime/Hardware/Spu.cs b/RecompOne.Runtime/Hardware/Spu.cs
-index 081fb13..ea6fe0b 100644
+index 081fb13..e39354c 100644
 --- a/RecompOne.Runtime/Hardware/Spu.cs
 +++ b/RecompOne.Runtime/Hardware/Spu.cs
-@@ -286,6 +286,10 @@ public sealed class Spu
+@@ -286,7 +286,12 @@ public sealed class Spu
      private ushort _eon, _eonHi;
      private uint _endx;
      private ushort _spucnt;
@@ -38,9 +38,11 @@ index 081fb13..ea6fe0b 100644
 +    private bool _irqDeliveryPending;
 +    private bool _irqServicePending;
      private ushort _transferAddr;
++    private uint _transferByteCursor;
      private ushort _transferCtrl = 4;
      private ushort _cdVolL, _cdVolR;
-@@ -369,11 +373,12 @@ public sealed class Spu
+     private ushort _extVolL, _extVolR;
+@@ -369,11 +374,12 @@ public sealed class Spu
              0x19C => (ushort)(_endx & 0xFFFF),
              0x19E => (ushort)(_endx >> 16),
              0x1A2 => _reverbStartAddr,
@@ -54,13 +56,27 @@ index 081fb13..ea6fe0b 100644
              0x1B0 => _cdVolL,
              0x1B2 => _cdVolR,
              0x1B4 => _extVolL,
-@@ -446,8 +451,16 @@ public sealed class Spu
+@@ -446,8 +452,29 @@ public sealed class Spu
              case 0x198: _eon = val; break;
              case 0x19A: _eonHi = val; break;
              case 0x1A2: _reverbStartAddr = val; break;
-+            case 0x1A4: _irqAddress = val; break;
-             case 0x1A6: _transferAddr = val; break;
+-            case 0x1A6: _transferAddr = val; break;
 -            case 0x1AA: _spucnt = val; break;
++            case 0x1A4: _irqAddress = val; break;
++            case 0x1A6:
++                _transferAddr = val;
++                _transferByteCursor = (uint)val << 3;
++                break;
++            case 0x1A8:
++            {
++                // Manual uploads use the same RAM path as DMA. In this runtime
++                // transfers complete synchronously; retain the programmed address
++                // register while advancing the internal byte cursor.
++                Span<byte> word = stackalloc byte[2];
++                System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(word, val);
++                DmaWrite(_transferByteCursor, word);
++                break;
++            }
 +            case 0x1AA:
 +                _spucnt = val;
 +                if ((val & 0x40) == 0)
@@ -72,7 +88,16 @@ index 081fb13..ea6fe0b 100644
              case 0x1AC: _transferCtrl = val; break;
              case 0x1B0: _cdVolL = val; break;
              case 0x1B2: _cdVolR = val; break;
-@@ -565,6 +578,65 @@ public sealed class Spu
+@@ -509,7 +536,7 @@ public sealed class Spu
+ 
+     public uint TransferAddrBytes()
+     {
+-        return (uint)_transferAddr << 3;
++        lock (_sync) return _transferByteCursor;
+     }
+ 
+     public void CaptureDebug(VoiceDebug[] voices, out SpuDebug state)
+@@ -565,6 +592,67 @@ public sealed class Spu
          {
              for (var i = 0; i < data.Length; i++)
                  Ram[(spuByteAddr + (uint)i) & (RamSize - 1)] = data[i];
@@ -83,6 +108,7 @@ index 081fb13..ea6fe0b 100644
 +                for (var i = 0; i < data.Length; i++)
 +                    _blockGeneration![(spuByteAddr + (uint)i & (RamSize - 1)) / 16] = generation;
 +            }
++            _transferByteCursor = (spuByteAddr + (uint)data.Length) & (RamSize - 1);
 +            CheckIrq(spuByteAddr, (uint)data.Length);
 +        }
 +    }
@@ -104,10 +130,11 @@ index 081fb13..ea6fe0b 100644
 +        }
 +    }
 +    private long _mixedSamples, _irqSample, _irqCount, _irqMaxDelay, _irqLateCount;
++    private long _irqWaitMs, _irqWaitMaxMs, _irqWaitTimeouts;
 +    internal object CaptureAudioTiming()
 +    {
 +        lock (_sync) return new { MixedSamples = _mixedSamples, IrqCount = _irqCount,
-+            MaxDeliveryDelaySamples = _irqMaxDelay, DeliveriesOver896Samples = _irqLateCount };
++            MaxDeliveryDelaySamples = _irqMaxDelay, DeliveriesOver896Samples = _irqLateCount, IrqWaitMs = _irqWaitMs, IrqWaitMaxMs = _irqWaitMaxMs, IrqWaitTimeouts = _irqWaitTimeouts };
 +    }
 +
 +    private void CheckIrq(uint address, uint length)
@@ -138,7 +165,7 @@ index 081fb13..ea6fe0b 100644
          }
      }
  
-@@ -595,7 +667,31 @@ public sealed class Spu
+@@ -595,7 +683,38 @@ public sealed class Spu
  
      private const int MixChunk = 16;
  
@@ -161,8 +188,15 @@ index 081fb13..ea6fe0b 100644
 +            while (_irqServicePending)
 +            {
 +                var remaining = deadline - Environment.TickCount64;
-+                if (remaining <= 0) break;
++                if (remaining <= 0) { if (_audioTiming) _irqWaitTimeouts++; break; }
++                var began = Environment.TickCount64;
 +                Monitor.Wait(_sync, (int)remaining);
++                if (_audioTiming)
++                {
++                    var waited = Environment.TickCount64 - began;
++                    _irqWaitMs += waited;
++                    _irqWaitMaxMs = Math.Max(_irqWaitMaxMs, waited);
++                }
 +            }
 +        }
 +    }
@@ -171,7 +205,7 @@ index 081fb13..ea6fe0b 100644
      {
          if (_xaL.Length < frames)
          {
-@@ -607,6 +703,7 @@ public sealed class Spu
+@@ -607,6 +726,7 @@ public sealed class Spu
  
          for (var chunk = 0; chunk < frames; chunk += MixChunk)
          {
@@ -179,7 +213,7 @@ index 081fb13..ea6fe0b 100644
              var last = Math.Min(chunk + MixChunk, frames);
  
              lock (_sync)
-@@ -617,6 +714,7 @@ public sealed class Spu
+@@ -617,6 +737,7 @@ public sealed class Spu
                      SweepTick(_mainVolR, ref _mainCurR, ref _mainCycR);
  
                      var (l, r) = Tick();
@@ -187,7 +221,7 @@ index 081fb13..ea6fe0b 100644
                      int mixL = (l * _voiceGain) >> 15, mixR = (r * _voiceGain) >> 15;
                      if (n < xaCount)
                      {
-@@ -776,6 +874,11 @@ public sealed class Spu
+@@ -776,6 +897,11 @@ public sealed class Spu
          v.Buf[2] = v.Buf[30];
  
          var addr = v.CurAddr & (uint)(RamSize - 1);
@@ -199,7 +233,7 @@ index 081fb13..ea6fe0b 100644
          var hdr = Ram[addr];
          var flags = Ram[(addr + 1) & (RamSize - 1)];
  
-@@ -887,4 +990,4 @@ public sealed class Spu
+@@ -887,4 +1013,4 @@ public sealed class Spu
              if (_noiseTimer < 0) _noiseTimer += 0x20000 >> shift;
          }
      }

@@ -9,6 +9,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TransitionOverlayChecks(unittest.TestCase):
+    def test_all_stage_entries_are_registered(self):
+        # Main's eight-entry table at 0x80010000 selects these entrypoints.
+        entries = [(171,57,0x801021F4),(228,66,0x8010154C),(294,56,0x80101BCC),
+                   (350,56,0x80101794),(406,55,0x8010148C),(461,55,0x80101A04),
+                   (516,66,0x80102254),(582,68,0x801026BC)]
+        config = json.loads((ROOT / 'config/CastlevaniaChronicles.json').read_text())
+        for lba, sectors, address in entries:
+            with self.subTest(lba=lba):
+                overlays = [o for o in config['overlays'] if o['offset'] == (lba-171)*2048]
+                self.assertEqual(len(overlays), 1)
+                self.assertEqual(overlays[0]['size'], sectors*2048)
+                source = (ROOT/'generated'/f"{overlays[0]['name']}.cs").read_text()
+                self.assertIn(f'[{address:#010X}u]'.replace('0X','0x'), source)
+
     def test_post_bat_block_has_dispatch_entry(self):
         config = json.loads((ROOT / 'config/CastlevaniaChronicles.json').read_text())
         overlays = [item for item in config['overlays'] if item['offset'] == (711 - 171) * 2048]

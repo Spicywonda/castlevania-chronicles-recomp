@@ -11,7 +11,7 @@ public static class GameSession
         using var log = new StreamWriter(logPath, append: false, new UTF8Encoding(false)) { AutoFlush = true };
         log.WriteLine($"started={DateTimeOffset.UtcNow:O}");
         using var process = new Process { StartInfo = startInfo };
-        if (!process.Start()) throw new InvalidOperationException("No se pudo iniciar el juego.");
+        if (!process.Start()) throw new InvalidOperationException("Could not start the game.");
 
         async Task CopyAsync(StreamReader reader)
         {

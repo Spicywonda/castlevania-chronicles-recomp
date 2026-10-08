@@ -1,0 +1,12 @@
+diff --git a/RecompOne.Runtime/Runtime.cs b/RecompOne.Runtime/Runtime.cs
+--- a/RecompOne.Runtime/Runtime.cs
++++ b/RecompOne.Runtime/Runtime.cs
+@@ -155,6 +155,8 @@
+     {
+         return Host.Window.Localization.MergeEmbedded(assembly, resourceName);
+     }
++
++    public static string AudioStatus => Host.Audio.DescribeTiming();
+ 
+     public static void SetContext(CpuContext c, IMemory m)
+     {

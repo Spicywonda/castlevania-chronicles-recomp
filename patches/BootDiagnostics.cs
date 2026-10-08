@@ -73,6 +73,8 @@ public static class BootDiagnostics
     public static void BeforeVSync(CpuContext cpu, IMemory memory)
     {
         Widescreen.BeforeVSync();
+        RunDiagnostics.BeforeVSync(cpu, memory);
+        Cheats.BeforeVSync(cpu, memory);
         if (!Enabled || Environment.TickCount64 < _nextCheck) return;
         _nextCheck = Environment.TickCount64 + 1000;
         if (!File.Exists("capture-request")) return;

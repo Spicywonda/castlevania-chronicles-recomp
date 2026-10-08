@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def transform(source, function, edits):
-    pattern = rf"(    public static void {function}\(.*?)(?=    public static void |\Z)"
+    pattern = rf"(    public static void {function}(?:_[A-Za-z0-9]+)?\(.*?)(?=    public static void |\Z)"
     matches = list(re.finditer(pattern, source, re.S))
     if len(matches) != 1:
         raise ValueError(f"Expected one {function}, got {len(matches)}")

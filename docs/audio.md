@@ -1,6 +1,6 @@
 # Audio investigation
 
-Investigation recorded September 20, 2026. **Latest result:** the user confirmed no audible cuts in the tested reference after the mixer was synchronized with completion of the SPU IRQ callback's DMA refill. This validates the tested audio, not every stage or mode.
+Investigation recorded September 20, 2026. **Historical result:** the user confirmed no audible cuts in the tested reference after the mixer was synchronized with completion of the SPU IRQ callback's DMA refill. This validates the tested audio, not every stage or mode.
 
 ## Optional capture
 
@@ -60,3 +60,58 @@ The recorded 60-second capture in `artifacts/audio-complete-refill/` contained:
 At that point, ten SPU/CD checks and four GPU checks passed, and compilation completed without errors. Existing generated-code warnings and a NuGet audit connectivity warning remained. These are historical validation results, not a claim that checks have been rerun for every later change.
 
 The user then confirmed that the preview had no cuts. Active patches 0001 and 0004 include CPU/mixer coordination and the optional diagnostics. Further gameplay, stages, and modes still require audio validation.
+
+
+## October 2026: manual SPU transfers and shared preview 0.3.5
+
+The user reported microcuts on all platforms. A 60-second macOS baseline recorded
+an OpenAL restart after startup. Increasing the output queue alone was insufficient:
+a repeat capture still had 1,548 backward/repeated disc-source steps while the
+queue remained healthy. Waking CPU polling early or changing mixer cadence did
+not reliably solve the source-order problem; neither experiment is included.
+
+The SPU register dispatcher ignored writes to **0x1F801DA8**, the manual transfer
+port. The original game driver `func_8002D630` writes its data through this port,
+including the silent ADPCM loop at SPU RAM **0x1000**. Captures showed zero bytes
+there instead of the loop marker. Silent/effect voices could then walk into the
+music buffers; a trace recorded a music refill IRQ before voices 22/23 reached
+its address. Such an IRQ changes the streaming buffer order prematurely.
+
+The runtime now accepts little-endian manual writes, advances a separate internal
+byte cursor with SPU RAM wrapping, and retains the programmed transfer-address
+register for readback. Manual writes use the existing synchronous RAM/IRQ path.
+DMA advances the same internal cursor. This matches the runtime's existing
+immediate-transfer model; it is not cycle-accurate FIFO emulation. The register
+semantics were also checked against the [DuckStation SPU implementation](https://github.com/stenzek/duckstation/blob/master/src/core/spu.cpp).
+
+Two synthetic checks failed before the correction and passed afterwards: a manual
+upload crossing the RAM boundary, and a silent voice that must never enter the
+music IRQ buffer. Two integration checks execute the original game's manual
+transfer driver for 16-byte and 80-byte transfers; both failed before and passed
+afterwards. The remaining runtime checks continue to pass.
+
+The shared OpenAL queue also increases from 8 to 12 buffers of 256 stereo frames
+at 44,100 Hz: **46.4 to 69.7 ms**, adding about 23.2 ms of queued audio. The original
+5 ms refill cadence and SPU IRQ/DMA synchronization are retained. `[Audio]` lines
+in `run.log` report queue reserve, refill passes, restarts including startup,
+fully drained queues after startup, and maximum mixing time. Diagnostic timer
+callbacks read counters only and never call OpenAL.
+
+The first corrected 60-second gameplay capture (`artifacts/audio-20261007-pio-fixed`)
+contained 151,526 music blocks (150,502 unique disc matches), **zero backward or
+repeated source steps**, and no effect-voice reads into the music buffer. All
+2,365 recorded refill IRQs came from music voice 22. Temporary full-voice/event
+tracing used for diagnosis was removed afterwards; optional normal captures stay
+limited to voices 22/23. Neither captures nor game data are packaged.
+
+The automated `tests/AudioCapture` harness selects a supplied local disc and uses
+the emulated controller to enter play and exercise effects. Menu-only, reset, and
+interrupted captures are not validation. These are bounded macOS checks, not
+full-game or physical Windows/Linux device validation. All three packages use the
+same runtime and patch series, including the prior cheat, respawn and reset fixes.
+
+Final source verification passed 41 checks: 21 runtime, 2 original-driver audio,
+11 cheat/diagnostic, 4 respawn, and 3 reset checks. A subsequent capture included
+a hard reset, so it is not counted as a second uninterrupted minute; its traced
+post-reset music still had zero backward/repeated source steps. The timing check
+now rejects captures whose SPU sample count does not match the capture duration.

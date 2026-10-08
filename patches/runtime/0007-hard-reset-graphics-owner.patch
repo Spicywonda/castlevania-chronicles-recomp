@@ -1,0 +1,73 @@
+diff --git a/RecompOne.Runtime/Runtime.cs b/RecompOne.Runtime/Runtime.cs
+--- a/RecompOne.Runtime/Runtime.cs
++++ b/RecompOne.Runtime/Runtime.cs
+@@ -173,6 +173,12 @@
+ 
+     private static void ResetForBoot()
+     {
++        // The game thread is stopped here; serialize teardown with the GL owner.
++        Host.GpuJobs.Run(ResetForBootOnGraphicsThread);
++    }
++
++    private static void ResetForBootOnGraphicsThread()
++    {
+         Audio.Detach();
+ 
+         Sdk.LibCd.Reset();
+@@ -189,7 +195,11 @@
+         Spu = null;
+         Cd = null;
+ 
+-        if (Hle.GpuHle.Backend is { Ready: true } backend)
++        if (Hle.GpuHle.Backend is Interp.InterpBackend interp)
++        {
++            interp.ResetForBoot();
++        }
++        else if (Hle.GpuHle.Backend is { Ready: true } backend)
+         {
+             backend.FillRect(0, 0, Gpu.VramWidth, Gpu.VramHeight, 0);
+             backend.Flush();
+diff --git a/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs b/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
+--- a/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
++++ b/RecompOne.Runtime/Gpu/Interp/InterpBackend.cs
+@@ -394,6 +394,40 @@
+         _previous.Clear();
+     }
+     
++    // Called at the reset barrier on the graphics owner, with the game thread
++    // waiting. Do not replay old frame graphs into the freshly booted game.
++    public void ResetForBoot()
++    {
++        if (Host.GpuJobs.Claimed && !Host.GpuJobs.IsOwner)
++            throw new InvalidOperationException("GPU reset requires the graphics owner thread");
++
++        lock (_gate)
++        {
++            while (_ready.Count > 0) Recycle(_ready.Dequeue());
++            _recording.Clear();
++            _current.Clear();
++            _previous.Clear();
++            _groups.Clear();
++            _clock.Reset();
++            _interpolating = false;
++            _resync = true;
++            _frames = 1;
++            _source = _rendered = 0;
++            _lastBeginMs = _sourceMs = _frameStartMs = _budgetMs = _renderedMs = PaceMs = 0;
++            _active = _inner.Ready;
++            GpuHle.Release();
++            GpuWorkDiagnostics.ReplayIndex = GpuWorkDiagnostics.ReplayCount = 0;
++            GpuWorkDiagnostics.ReplayOperation = "idle";
++            if (_inner.Ready)
++            {
++                // Bypass recording: Flush() only settles the current frame,
++                // so recording this clear would leave it pending until boot.
++                _inner.FillRect(0, 0, Gpu.VramWidth, Gpu.VramHeight, 0);
++                _inner.Flush();
++            }
++        }
++    }
++
+     private void Settle()
+     {
+         if (!_active) return;

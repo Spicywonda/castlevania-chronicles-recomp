@@ -1,23 +1,31 @@
-# macOS Apple Silicon package
+# macOS preview — 0.3.6
 
-Download `CastlevaniaChronicles-macos-arm64.zip` from GitHub Releases and extract it. Move `Castlevania Chronicles.app` to your preferred location and open it. The app includes .NET and does not need the development workspace or an SDK installation.
+Download and extract the osx-arm64 package. Open **Castlevania Chronicles.app**.
+Choose your USA SLUS-01384 CUE or CHD, then click **Play**. Keep CUE and referenced BIN files together.
+You can drop a disc image onto the launcher. It remembers your selection.
 
-On first launch, select your USA SLUS-01384 CUE file in the disc picker. Keep its referenced BIN files alongside the CUE. The disc is required at runtime and is not included in the download.
+The runtime is included; no .NET installation is required. All dependencies are inside the application bundle.
+Use **Open logs** after a crash and share `run.log`. Disc validation errors are recorded in `validate.log`.
 
-Settings, memory cards, and `run.log` are stored in `~/Library/Application Support/Castlevania Chronicles Recomp`. Preserve that folder when updating. The app starts in 4:3 with English menus.
+The build includes all eight stage entrypoints. Full-game completion and the post-bat transition still need gameplay validation on this platform.
+No ROM or game assets are included.
 
-This package targets Apple Silicon and macOS 14 or later. It is ad-hoc signed for local execution, not Developer ID signed or notarized. macOS may require an explicit user approval to open a downloaded application. Intel Macs are not supported by this package.
+Build: `scripts/publish-macos.sh`.
 
-First-stage gameplay and pause/resume have been tested on the development Mac. Later stages and saving remain unvalidated. Widescreen is experimental and disabled by default.
+## Shared audio update
 
-To build the release package after generating the game code:
+Version 0.3.5 uses the same audio implementation on Windows, macOS and Linux.
+It also fixes ignored manual SPU uploads, which left the silent audio loop empty.
+The launcher and in-game menus, including Cheats, start in English.
+The output reserve increases from 46.4 to 69.7 ms to tolerate short scheduling stalls,
+while retaining the original mixer cadence and SPU interrupt/DMA synchronization.
+This adds approximately 23 ms of queued audio. `run.log` now includes `[Audio]`
+queue/restart counters to help diagnose any remaining cuts.
+Local playback validation is on macOS; Windows and Linux require device testing.
+See [audio investigation](audio.md) for measurements and limitations.
 
-```sh
-./scripts/publish-macos.sh
-```
+## Controls and invincibility (0.3.6)
 
-The build requires the pinned .NET SDK, Python 3, and the macOS `lipo`, `codesign`, and `ditto` tools. Build outputs stay under `artifacts/macos/` and are excluded from Git.
+Press **F1 → Controls → Keyboard and gamepad...** to reassign keys and controller buttons. Changes save automatically for this game. Use **Reset defaults** to restore the selected input type and player port.
 
-## Package verification
-
-The release app was extracted under a temporary directory outside the development workspace and launched with local .NET SDK variables removed. The disc picker configuration selected the USA disc and the game reached its load screen. The relocated app passed `codesign --verify --deep --strict`. This is an Apple Silicon smoke test, not full-game compatibility validation.
+**F1 → Cheats → Invincibility** prevents contact damage and knockback. It starts disabled each session. Falls and instant death still apply. The same implementation ships on all three platforms.

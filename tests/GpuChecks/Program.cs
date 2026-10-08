@@ -29,6 +29,22 @@ GameRuntime.Run(() =>
             Console.WriteLine($"{(bad==0 ? "PASS" : "FAIL")} palette round trip {rect}: {bad}/{w*h} mismatches");
             if(bad!=0) failures++;
         }
+        for(var reset=0;reset<3;reset++)
+        {
+            typeof(GameRuntime).GetMethod("ResetForBoot", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null,null);
+            m=new PSMemory(); c=new CpuContext(); GameRuntime.SetContext(c,m);
+            m.WriteU16(0x80010000,960);m.WriteU16(0x80010002,0);
+            m.WriteU16(0x80010004,16);m.WriteU16(0x80010006,1);
+            c.A0=0x80010000;c.A1=0x80030000;LibGpu.StoreImage(c,m);
+            for(uint i=0;i<16;i++)
+                if(m.ReadU16(0x80030000+i*2)!=0) throw new Exception("VRAM was not cleared by reset");
+            for(uint i=0;i<16;i++) m.WriteU16(0x80020000+i*2,(ushort)(0x1234+i));
+            c.A0=0x80010000;c.A1=0x80020000;LibGpu.LoadImage(c,m);
+            c.A0=0x80010000;c.A1=0x80030000;LibGpu.StoreImage(c,m);
+            for(uint i=0;i<16;i++)
+                if(m.ReadU16(0x80030000+i*2)!=0x1234+i) throw new Exception("GPU did not resume after reset");
+            Console.WriteLine($"PASS native OpenGL hard reset {reset+1}: clear and read/write after restart");
+        }
     }
     catch(Exception e) { failures++; Console.Error.WriteLine(e); }
 });

@@ -1,24 +1,33 @@
-# Linux x64 package
+# Linux preview — 0.3.6
 
-Extract `CastlevaniaChronicles-linux-x64.tar.gz` and run:
+Download and extract the linux-x64 package. Open **Play**.
+Choose your USA SLUS-01384 CUE or CHD, then click **Play**. Keep CUE and referenced BIN files together.
+You can drop a disc image onto the launcher. It remembers your selection.
 
-```sh
-cd CastlevaniaChronicles-linux-x64
-./Play.sh '/path/to/Castlevania Chronicles (USA).cue'
-```
+The runtime is included; no .NET installation is required. Keep the runtime folder beside Play; its contents are internal dependencies.
+Use **Open logs** after a crash and share `run.log`. Disc validation errors are recorded in `validate.log`.
 
-Keep the BIN files referenced by the CUE beside it. Alternatively, place the CUE at `disc/chronicles.cue` inside the extracted package and run `./Play.sh` without arguments. Disc images are not included.
+The build includes all eight stage entrypoints. Full-game completion and the post-bat transition still need gameplay validation on this platform.
+No ROM or game assets are included.
 
-The package contains .NET and the native application libraries. It still requires a compatible glibc-based Linux desktop, working OpenGL graphics drivers, and the system libraries used by the bundled native dependencies. Direct native dependencies include glibc, libstdc++, libgcc, and GTK 3/GLib for the file dialog. The desktop graphics/audio backends and .NET may also load system libraries dynamically. Use `ldd ./CastlevaniaChronicles` and `ldd ./nfd.so` to diagnose missing direct dependencies. It is not a static binary or an AppImage. Linux ARM and musl-based distributions are not targets of this package.
+Build: `scripts/publish-linux.sh`.
 
-Settings, memory cards, and `run.log` are stored under `${XDG_DATA_HOME:-$HOME/.local/share}/castlevania-chronicles-recomp`. Keep this directory when updating the application. `CHRONICLES_DATA_DIR` overrides the storage directory. The launcher accepts paths containing spaces.
+Linux requires a glibc x64 desktop with OpenGL drivers, libstdc++, libgcc, and GTK 3/GLib for the file picker. This is not an AppImage. On a missing-library error, inspect `ldd runtime/nfd.so` and `ldd runtime/CastlevaniaChronicles`. Launch from a terminal with `./Play` if your file manager does not run executables.
 
-The default view is 4:3. Widescreen remains experimental and must be explicitly enabled with `CHRONICLES_WIDESCREEN=1`. First-stage gameplay and pause/resume have been tested on macOS; Linux startup, input, audio, graphics, and gameplay still require testing on Linux hardware. A cross-build and valid ELF headers do not establish runtime compatibility.
+## Shared audio update
 
-To build after generating the game code:
+Version 0.3.5 uses the same audio implementation on Windows, macOS and Linux.
+It also fixes ignored manual SPU uploads, which left the silent audio loop empty.
+The launcher and in-game menus, including Cheats, start in English.
+The output reserve increases from 46.4 to 69.7 ms to tolerate short scheduling stalls,
+while retaining the original mixer cadence and SPU interrupt/DMA synchronization.
+This adds approximately 23 ms of queued audio. `run.log` now includes `[Audio]`
+queue/restart counters to help diagnose any remaining cuts.
+Local playback validation is on macOS; Windows and Linux require device testing.
+See [audio investigation](audio.md) for measurements and limitations.
 
-```sh
-./scripts/publish-linux.sh
-```
+## Controls and invincibility (0.3.6)
 
-The build creates a fresh folder under `artifacts/linux/`, a compressed archive preserving executable permissions, a per-file checksum manifest, and a SHA-256 checksum for the archive. Keep the complete extracted directory together.
+Press **F1 → Controls → Keyboard and gamepad...** to reassign keys and controller buttons. Changes save automatically for this game. Use **Reset defaults** to restore the selected input type and player port.
+
+**F1 → Cheats → Invincibility** prevents contact damage and knockback. It starts disabled each session. Falls and instant death still apply. The same implementation ships on all three platforms.

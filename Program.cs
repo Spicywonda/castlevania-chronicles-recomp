@@ -10,15 +10,15 @@ if (args.Length == 2 && args[0] == "--validate-disc")
         using var disc = DiscFs.Open(args[1]);
         if (!disc.Locate("SLUS_013.84", out _, out _))
         {
-            Console.Error.WriteLine("La imagen no contiene Castlevania Chronicles USA (SLUS-01384).");
+            Console.Error.WriteLine("The image does not contain Castlevania Chronicles USA (SLUS-01384).");
             return 2;
         }
-        Console.WriteLine("Disco USA SLUS-01384 verificado.");
+        Console.WriteLine("USA SLUS-01384 disc verified.");
         return 0;
     }
     catch (Exception error)
     {
-        Console.Error.WriteLine($"No se pudo validar el disco: {error.Message}");
+        Console.Error.WriteLine($"Could not validate the disc: {error.Message}");
         return 2;
     }
 }
@@ -35,8 +35,12 @@ ConfigManager.Load();
 GameRuntime.Defaults(view => view.Language = "en");
 if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
 ConfigManager.SaveGame();
+Console.WriteLine("[Build] Chronicles desktop preview 0.3.6 controls and invincibility — stages 1–8");
 var exitCode = 0;
 Chronicles.Widescreen.Initialize();
+Chronicles.Cheats.Initialize();
+Chronicles.Controls.Initialize();
+using var performanceDiagnostics = Chronicles.RunDiagnostics.Start();
 GameRuntime.Run(() =>
 {
     var memory = new PSMemory();
@@ -52,6 +56,9 @@ GameRuntime.Run(() =>
     {
         exitCode = 1;
         Console.Error.WriteLine(error);
+        Console.Error.WriteLine($"[Crash] overlays={string.Join(",", RecompOne.Runtime.Dispatch.Dispatcher.ActiveNames)}");
+        if (GameRuntime.Cpu is { } cpu)
+            Console.Error.WriteLine($"[Crash] RA={cpu.RA:X8} SP={cpu.SP:X8} GP={cpu.GP:X8} V0={cpu.V0:X8} A0={cpu.A0:X8} A1={cpu.A1:X8}");
         if (Environment.GetEnvironmentVariable("CHRONICLES_DUMP_RAM") == "1")
         {
             var ram = new byte[2 * 1024 * 1024];

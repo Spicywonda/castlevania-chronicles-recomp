@@ -46,6 +46,110 @@
           "address": "80100FE0"
         }
       ]
+    },
+    {
+      "name": "stage2",
+      "file": "DRACULA.PAC",
+      "offset": 116736,
+      "size": 135168,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "8010154C"
+        }
+      ]
+    },
+    {
+      "name": "stage3",
+      "file": "DRACULA.PAC",
+      "offset": 251904,
+      "size": 114688,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "80101BCC"
+        }
+      ]
+    },
+    {
+      "name": "stage4",
+      "file": "DRACULA.PAC",
+      "offset": 366592,
+      "size": 114688,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "80101794"
+        }
+      ]
+    },
+    {
+      "name": "stage5",
+      "file": "DRACULA.PAC",
+      "offset": 481280,
+      "size": 112640,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "8010148C"
+        }
+      ]
+    },
+    {
+      "name": "stage6",
+      "file": "DRACULA.PAC",
+      "offset": 593920,
+      "size": 112640,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "80101A04"
+        }
+      ]
+    },
+    {
+      "name": "stage7",
+      "file": "DRACULA.PAC",
+      "offset": 706560,
+      "size": 135168,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "80102254"
+        }
+      ]
+    },
+    {
+      "name": "stage8",
+      "file": "DRACULA.PAC",
+      "offset": 841728,
+      "size": 139264,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "801026BC"
+        }
+      ]
+    },
+    {
+      "name": "ending",
+      "file": "DRACULA.PAC",
+      "offset": 1128448,
+      "size": 81920,
+      "base": "0x80100000",
+      "linearSweep": true,
+      "functions": [
+        {
+          "address": "801008D4"
+        }
+      ]
     }
   ],
   "patches": [
@@ -102,6 +206,12 @@
       "function": "func_8004E8B8",
       "mode": "post",
       "target": "Chronicles.TileMargins.After"
+    },
+    {
+      "overlay": "main",
+      "function": "AddPrim",
+      "mode": "pre",
+      "target": "Chronicles.OrderingTableFix.BeforeAddPrim"
     }
   ]
 }

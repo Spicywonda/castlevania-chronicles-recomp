@@ -1,14 +1,28 @@
 diff --git a/RecompOne.Runtime/Host/Audio.cs b/RecompOne.Runtime/Host/Audio.cs
-index 26aa204..f04d71f 100644
+index 26aa204..1cc5b4d 100644
 --- a/RecompOne.Runtime/Host/Audio.cs
 +++ b/RecompOne.Runtime/Host/Audio.cs
-@@ -23,6 +23,42 @@ internal static unsafe class Audio
+@@ -12,7 +12,8 @@ internal static unsafe class Audio
+     private static ALCtx* _context;
+ 
+ 
+-    private const int NumBuffers = 8;
++    // About 70 ms at 44.1 kHz: covers the 47 ms scheduling stall seen in capture.
++    private const int NumBuffers = 12;
+     private const int FramesPerBuffer = 256;
+ 
+     private static uint _source;
+@@ -23,6 +24,49 @@ internal static unsafe class Audio
      private static Spu? _spu;
      private static volatile bool _running;
      private static float _masterVolume = 1.0f;
 +    private static FileStream? _capture;
 +    private static int _captureBytesLeft;
 +    private static int _maxProcessed, _restarts, _lastCaptureSecond = -1;
++
++    private static readonly System.Diagnostics.Stopwatch CaptureClock = new();
++    private static double _maxMixMs, _totalMixMs;
++    private static int _refillPasses, _emptyQueueAfterStartup;
 +
 +    private static void CaptureSamples()
 +    {
@@ -24,7 +38,7 @@ index 26aa204..f04d71f 100644
 +            {
 +                _lastCaptureSecond = second;
 +                File.WriteAllText("audio-timing.json", System.Text.Json.JsonSerializer.Serialize(new
-+                { Seconds = second, MaxProcessedBuffers = _maxProcessed, SourceRestarts = _restarts,
++                { Seconds = second, WallSeconds = CaptureClock.Elapsed.TotalSeconds, MaxMixMs = _maxMixMs, TotalMixMs = _totalMixMs, EmptyQueueAfterStartup = _emptyQueueAfterStartup, MaxProcessedBuffers = _maxProcessed, SourceRestarts = _restarts,
 +                    Spu = _spu?.CaptureAudioTiming() }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 +            }
 +            if (_captureBytesLeft == 0)
@@ -42,10 +56,13 @@ index 26aa204..f04d71f 100644
 +            _capture = null;
 +        }
 +    }
++
++    public static string DescribeTiming() => FormattableString.Invariant(
++        $"reserveMs={NumBuffers * FramesPerBuffer * 1000.0 / 44100:F1} refills={Volatile.Read(ref _refillPasses)} restartsIncludingStartup={Volatile.Read(ref _restarts)} emptyQueueAfterStartup={Volatile.Read(ref _emptyQueueAfterStartup)} maxMixMs={Volatile.Read(ref _maxMixMs):F2}");
  
      public static void Initialize()
      {
-@@ -57,6 +93,11 @@ internal static unsafe class Audio
+@@ -57,6 +101,11 @@ internal static unsafe class Audio
  
              _al.SourcePlay(_source);
  
@@ -57,23 +74,32 @@ index 26aa204..f04d71f 100644
              _running = true;
              _mixerThread = new Thread(MixerLoop) { IsBackground = true, Name = "spu-mixer" };
              _mixerThread.Start();
-@@ -102,12 +143,14 @@ internal static unsafe class Audio
+@@ -102,12 +151,23 @@ internal static unsafe class Audio
      private static void FillBuffers(Spu spu)
      {
          _al!.GetSourceProperty(_source, GetSourceInteger.BuffersProcessed, out var processed);
 +        _maxProcessed = Math.Max(_maxProcessed, processed);
++        if (processed > 0)
++        {
++            if (_refillPasses++ > 0 && processed == NumBuffers) _emptyQueueAfterStartup++;
++            if (_capture != null && !CaptureClock.IsRunning) CaptureClock.Start();
++        }
          while (processed > 0)
          {
              uint buf = 0;
              _al.SourceUnqueueBuffers(_source, 1, &buf);
  
 -            spu.Mix(_sampleBuf, FramesPerBuffer);
++            var mixStart = System.Diagnostics.Stopwatch.GetTimestamp();
 +            spu.Mix(_sampleBuf, FramesPerBuffer, synchronizeIrq: true);
++            var mixMs = System.Diagnostics.Stopwatch.GetElapsedTime(mixStart).TotalMilliseconds;
++            _maxMixMs = Math.Max(_maxMixMs, mixMs);
++            _totalMixMs += mixMs;
 +            CaptureSamples();
  
              _al.BufferData(buf, BufferFormat.Stereo16, _sampleBuf, 44100);
              _al.SourceQueueBuffers(_source, 1, &buf);
-@@ -116,7 +159,10 @@ internal static unsafe class Audio
+@@ -116,7 +176,10 @@ internal static unsafe class Audio
  
          _al.GetSourceProperty(_source, GetSourceInteger.SourceState, out var state);
          if (state != (int)SourceState.Playing)
@@ -84,7 +110,7 @@ index 26aa204..f04d71f 100644
      }
  
      public static void Shutdown()
-@@ -124,6 +170,8 @@ internal static unsafe class Audio
+@@ -124,6 +187,8 @@ internal static unsafe class Audio
          if (_alc == null) return;
          _running = false;
          _mixerThread?.Join();
@@ -93,7 +119,7 @@ index 26aa204..f04d71f 100644
          if (_al != null)
          {
              _al.SourceStop(_source);
-@@ -134,4 +182,4 @@ internal static unsafe class Audio
+@@ -134,4 +199,4 @@ internal static unsafe class Audio
          if (_context != null) _alc.DestroyContext(_context);
          if (_device != null) _alc.CloseDevice(_device);
      }

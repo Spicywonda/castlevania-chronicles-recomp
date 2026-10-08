@@ -2,9 +2,22 @@
 
 An experimental recompilation of the PlayStation USA release **SLUS-01384**, built with [RecompOne](https://github.com/BlackLabelHQ/RecompOne).
 
-**Early development:** the first stage is playable on macOS Apple Silicon, with movement, combat, scenery, and audio confirmed in local testing. Windows testing reached the bat boss; a crash after collecting the orb exposed a missing post-stage overlay, now included for retesting. The Start/Enter pause hang is fixed; pause/resume was confirmed on macOS. Widescreen has reported visual corruption and object pop-in; it is experimental and disabled by default. Later stages, saving, and Linux gameplay have not been validated.
+**Early development:** the first stage is playable on macOS Apple Silicon, with movement, combat, scenery, and audio confirmed in local testing. Windows testing reached the bat boss; crashes after collecting the orb exposed missing transition and stage-two overlays. All eight stage entries are now registered for retesting. The Start/Enter pause hang is fixed; pause/resume was confirmed on macOS. Widescreen has reported visual corruption and object pop-in; it is experimental and disabled by default. Later stages, saving, and Linux gameplay have not been validated.
 
 The Git tree contains project sources; development binaries are provided separately through [GitHub Releases](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases). You must supply your own disc image to generate the game code and run the application. Disc images, extracted assets, generated code, memory dumps, local toolchains, and build outputs must stay outside Git.
+
+## Latest preview: 0.3.6
+
+The three platform packages share the same game code and runtime fixes:
+
+- English desktop launcher and in-game menus.
+- Keyboard and gamepad remapping with saved bindings.
+- Contact invincibility, infinite health, hearts and lives.
+- Stage transition coverage for all eight stage overlays.
+- Respawn GPU-chain and Hard Reset fixes.
+- Corrected manual SPU uploads and a shared audio output reserve.
+
+50 automated checks passed for this preview. Physical controller input and Windows/Linux gameplay still need testing; full-game compatibility is not established.
 
 ## Downloads
 
@@ -14,6 +27,8 @@ Releases include separate downloads for Windows x64, macOS Apple Silicon, and Li
 - [macOS app instructions](docs/macos.md)
 - [Linux package instructions](docs/linux.md)
 - [Download releases](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases)
+
+The desktop preview uses the same English launcher on all three platforms: choose a disc, then **Play**. Windows and Linux expose one launcher plus a private `runtime` folder; macOS uses an app bundle. Build with `scripts/publish-windows.sh`, `scripts/publish-macos.sh`, or `scripts/publish-linux.sh`; outputs are under `artifacts/desktop/`.
 
 ## Requirements
 
@@ -65,6 +80,18 @@ The output is `artifacts/Castlevania Chronicles Dev.app`. It must remain inside 
 
 Windows build instructions and validation limits are tracked in [the Windows guide](docs/windows.md).
 
+## Controls
+
+Press **F1 → Controls → Keyboard and gamepad...** to reassign keyboard keys and controller buttons. Changes are saved automatically. **Reset defaults** restores the selected input type and player port.
+
+## Cheats
+
+During play, press **F1** to show the menu bar, then choose **Cheats**.
+Invincibility, infinite health, infinite hearts and infinite lives are optional, start disabled,
+and can be switched off together with **Disable all**. Settings last for the current
+session. Invincibility prevents contact damage and knockback. Neither invincibility nor infinite health prevents falls or instant death. See [cheat behavior and
+validation](docs/cheats.md).
+
 ## Experimental widescreen
 
 The default reference is 4:3. To try the incomplete first-stage extension:
@@ -80,11 +107,16 @@ F8 toggles the experiment. Corrupted imagery and object pop-in have been reporte
 ```sh
 ./scripts/apply-runtime-patches.sh
 ./scripts/dotnet.sh run --project tests/RuntimeChecks -c Release
+./scripts/dotnet.sh run --project tests/AudioChecks -c Release
+./scripts/dotnet.sh run --project tests/CheatChecks -c Release
+./scripts/dotnet.sh run --project tests/ControlsChecks -c Release
+./scripts/dotnet.sh run --project tests/RespawnChecks -c Release
+./scripts/dotnet.sh run --project tests/HardResetChecks -c Release
 ./scripts/dotnet.sh run --project tests/WidescreenChecks -c Release
 ./scripts/dotnet.sh run --project tests/GpuChecks -c Release
 ```
 
-Runtime checks cover SPU IRQ delivery, DMA synchronization, and mixed LibDs/CdGetSector reads with synthetic data. Widescreen checks cover patch state. GPU checks open a diagnostic window and exercise palette readback. Passing these checks does not establish full-game compatibility or correct widescreen rendering.
+Runtime and audio checks cover manual SPU transfers, the silent audio loop, SPU IRQ delivery, DMA synchronization, and mixed LibDs/CdGetSector reads with synthetic data. Widescreen checks cover patch state. GPU checks open a diagnostic window and exercise palette readback. Passing these checks does not establish full-game compatibility or correct widescreen rendering.
 
 RecompOne is pinned to `d81dec8c9622fdcd0865d73588a3baa8d3c3a605`; local runtime changes are maintained in `patches/runtime/`.
 

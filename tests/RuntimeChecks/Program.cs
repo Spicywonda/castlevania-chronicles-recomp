@@ -19,6 +19,39 @@ void Require(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 
+Check("SPU manual upload preserves bytes, advances and wraps the transfer cursor", () =>
+{
+    var spu = new Spu();
+    spu.WriteReg16(0x1F801DA6, 0xFFFF);
+    for (ushort i = 0; i < 40; i++) spu.WriteReg16(0x1F801DA8, (ushort)(0xA100 + i));
+    spu.WriteReg16(Control, 0xC010);
+    for (var i = 0; i < 40; i++)
+    {
+        var address = (0x7FFF8 + i * 2) & 0x7FFFF;
+        Require(spu.Ram[address] == i && spu.Ram[address + 1] == 0xA1,
+            $"Manual upload missing or out of order at word {i}");
+    }
+    Require(spu.ReadReg16(0x1F801DA6) == 0xFFFF, "Transfer address register must retain the programmed address");
+    spu.WriteReg16(0x1F801DA6, 0x200);
+    spu.WriteReg16(0x1F801DA8, 0x0700);
+    Require(spu.Ram[0x1001] == 7, "Reprogramming the transfer address did not reset the cursor");
+});
+Check("Manually uploaded silent loop cannot enter the music IRQ buffer", () =>
+{
+    var spu = new Spu();
+    spu.WriteReg16(0x1F801DA6, 0x200);
+    spu.WriteReg16(0x1F801DA8, 0x0700);
+    for (var i = 1; i < 8; i++) spu.WriteReg16(0x1F801DA8, 0);
+    spu.WriteReg16(Control, 0xC010);
+    spu.WriteReg16(0x1F801C04, 0x1000);
+    spu.WriteReg16(0x1F801C06, 0x200);
+    spu.WriteReg16(0x1F801C08, 0x000F);
+    spu.WriteReg16(IrqAddress, 0x202);
+    spu.WriteReg16(Control, 0xC040);
+    spu.WriteReg16(0x1F801D88, 1);
+    spu.Mix(new short[2048], 1024);
+    Require((spu.ReadReg16(Status) & 0x40) == 0, "Silent voice escaped into the music buffer and raised an IRQ");
+});
 Check("SPU IRQ address readback", () =>
 {
     var spu = new Spu();
@@ -176,6 +209,28 @@ Check("Pad state tracks Start release and re-press without presenting frames", (
         Require(cpu.V0 == 6, "First controller became disconnected");
         Require(memory.ReadU16(0x80008002) == buttons, "Pause loop read stale controller buttons");
     }
+});
+foreach (var dmaMode in new[] { false, true })
+foreach (var shape in new[] { "valid", "self", "two", "mirrored" })
+Check($"GPU packet chain {shape} via {(dmaMode ? "DMA" : "DrawOTag")}", () =>
+{
+    var m = new PSMemory();
+    const uint start = 0x1000, second = 0x1010;
+    m.WriteU32(start, shape == "self" ? start : second);
+    m.WriteU32(second, shape == "valid" ? 0xFFFFFFu : shape == "mirrored" ? start + 0x200000u : start);
+    var failed = false;
+    try
+    {
+        if (dmaMode)
+            new Dma(m, new Gpu(), new Spu(), new Mdec(), () => {}).Run(2, start, 0, 0x01000401);
+        else LibGpu.DrawOTag(new CpuContext { A0 = start }, m);
+    }
+    catch (InvalidOperationException e)
+    {
+        failed = e.Message.Contains("cyclic GPU packet chain") && e.Message.Contains("00001000");
+        if (!failed) throw;
+    }
+    Require(failed == (shape != "valid"), "Cyclic chain was silently replayed or valid chain rejected");
 });
 return failures == 0 ? 0 : 1;
 

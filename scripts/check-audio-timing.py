@@ -6,6 +6,8 @@ report = json.loads(Path(sys.argv[1]).read_text())
 spu = report['Spu']
 if report['Seconds'] < 60 or spu['IrqCount'] < 100:
     raise SystemExit('INCOMPLETE: need a minute of capture with an active audio stream')
+if abs(spu['MixedSamples'] - report['Seconds'] * 44100) > 256:
+    raise SystemExit('INCOMPLETE: SPU sample count differs from capture duration (reset or replaced SPU)')
 late = spu['DeliveriesOver896Samples']
 print(f"IRQ deliveries: {spu['IrqCount']}; late: {late}; max delay: {spu['MaxDeliveryDelaySamples'] / 44.1:.2f} ms")
 raise SystemExit(1 if late else 0)

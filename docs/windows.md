@@ -1,30 +1,31 @@
-# Windows x64 development package
+# Windows preview — 0.3.6
 
-This experimental package contains the Castlevania Chronicles recompilation, a small Windows launcher, and a self-contained .NET runtime. You need your own USA SLUS-01384 disc image. Keep the extracted folder together; the EXE files alone are insufficient. The first stage reached the bat boss on a GTX 1060 in Windows testing. A crash after collecting the boss orb exposed a missing archive overlay; this build includes that overlay, but the transition has not yet been retested on Windows. Later stages, saving, and full-game compatibility remain unverified.
+Download and extract the win-x64 package. Open **Play.exe**.
+Choose your USA SLUS-01384 CUE or CHD, then click **Play**. Keep CUE and referenced BIN files together.
+You can drop a disc image onto the launcher. It remembers your selection.
 
-## Play
+The runtime is included; no .NET installation is required. Keep the runtime folder beside Play; its contents are internal dependencies.
+Use **Open logs** after a crash and share `run.log`. Disc validation errors are recorded in `validate.log`.
 
-1. Extract the ZIP to a local folder.
-2. Double-click `Play.exe`.
-3. Click **Seleccionar ROM** and choose your USA CUE or CHD, then click **Jugar**. Keep every BIN named by a CUE beside it. The launcher remembers your selection on later starts.
+The build includes all eight stage entrypoints. Full-game completion and the post-bat transition still need gameplay validation on this platform.
+No ROM or game assets are included.
 
-The disc is validated before the game starts. The launcher stores its selection, game settings, memory cards, and the latest `run.log` in `%LOCALAPPDATA%\CastlevaniaChroniclesRecomp`. **Abrir carpeta de logs** opens that folder. If disc validation fails, read `validate.log` in the same folder. After a gameplay failure, send `run.log` and the steps that led to it; do not send the ROM or a RAM dump. The old `Play.cmd` still forwards a dragged CUE/CHD to the new launcher. Direct `CastlevaniaChronicles.exe <image>` startup remains available for development, and opening the game EXE without arguments shows the in-game picker.
+Build: `scripts/publish-windows.sh`.
 
-No separate .NET installation is needed. A working Windows graphics driver and compatible OpenGL backend are required. This is an unsigned development executable.
+## Shared audio update
 
-## Build on macOS or a compatible Bash environment
+Version 0.3.5 uses the same audio implementation on Windows, macOS and Linux.
+It also fixes ignored manual SPU uploads, which left the silent audio loop empty.
+The launcher and in-game menus, including Cheats, start in English.
+The output reserve increases from 46.4 to 69.7 ms to tolerate short scheduling stalls,
+while retaining the original mixer cadence and SPU interrupt/DMA synchronization.
+This adds approximately 23 ms of queued audio. `run.log` now includes `[Audio]`
+queue/restart counters to help diagnose any remaining cuts.
+Local playback validation is on macOS; Windows and Linux require device testing.
+See [audio investigation](audio.md) for measurements and limitations.
 
-Prerequisites: .NET SDK 10.0.401 (selected by `scripts/dotnet.sh`), Python 3, the pinned RecompOne submodule, and the USA disc linked at `disc/chronicles.cue` with its BIN files. The initial publish needs NuGet access to restore Windows runtime and Windows Desktop targeting packs.
+## Controls and invincibility (0.3.6)
 
-```sh
-./scripts/recompile.sh
-./scripts/publish-windows.sh
-```
+Press **F1 → Controls → Keyboard and gamepad...** to reassign keys and controller buttons. Changes save automatically for this game. Use **Reset defaults** to restore the selected input type and player port.
 
-Each invocation creates a separate `artifacts/windows/build-XXXXXXXX/` directory with the package, ZIP, and SHA-256 checksum. The script applies the repository's runtime patches, publishes the game and single-file launcher for `win-x64`, and checks the PE headers and self-contained game runtime. Disc images, memory cards, and saves are excluded. Do not build another target concurrently because the projects share intermediate files.
-
-The compiled game assembly is derived from the disc used for recompilation. This package is for development testing with your own matching USA image; it does not include a disc.
-
-## Verification limits
-
-A macOS cross-publish checks structure and dependencies, not Windows gameplay. On Windows, test the launcher with CUE/BIN and CHD, a path containing spaces, relaunch with the remembered path, first-stage gameplay, the boss orb transition, audio, controller/keyboard input, and memory-card save/load. Report the executable version, selected mode, reproduction steps, and `run.log` for a failure.
+**F1 → Cheats → Invincibility** prevents contact damage and knockback. It starts disabled each session. Falls and instant death still apply. The same implementation ships on all three platforms.

@@ -71,3 +71,25 @@ The main executable's archive table points index 10 to LBA 711 for 11 sectors. T
 `InterpBackend.ReadVram` executed only `_current` while new writes remained in `_recording` or `_ready`. `0003-gpu-readback-order.patch` executes those queues in order before a synchronous read, clears consumed commands, and invalidates prior interpolation. The four GPU checks then recovered all expected colors, and the existing SPU/CD checks continued to pass.
 
 Later visual testing showed STAGE 01 with floor, platforms, stone blocks, decorated walls, curtains, and background restored. The user continued playing while the time and score advanced. Audio was validated separately afterward; see [audio investigation](audio.md). Later stages and saving remain unvalidated.
+
+## Stage two and remaining stage entrypoints
+
+The next Windows log loaded `poststage1` successfully, then failed at `8010154C`.
+The eight words at main executable address `80010000` are the stage entry table:
+`801021F4`, `8010154C`, `80101BCC`, `80101794`, `8010148C`, `80101A04`, `80102254`, `801026BC`.
+Main state `80011AC8` loads archive index `stage + 1`, then calls that table entry.
+The second word is exactly the reported unmapped call. Archive blocks 2–8 were absent.
+All eight blocks now have explicit entrypoints; their sizes and LBAs were read from the
+executable's archive tables and their entry bytes checked in the local disc.
+Main state `80011A6C` also loads index 11 (LBA 722, 40 sectors) before calling
+`801008D4`; this block is registered as `ending` (a project label).
+
+`tests/check-transition-overlays.py` fails on the seven missing stage blocks before
+this change and passes after generation. This verifies registration, not a complete
+playthrough. Linear sweep still reports unknown opcodes while scanning some regions;
+later function boundaries and indirect calls need gameplay validation.
+
+The subsequent local macOS log records `stage1 -> poststage1 -> stage2`, then
+`exit=0`, after disc validation returned zero through the new launcher. This
+confirms that the stage-two dispatch was reached locally; Windows and Linux
+execution of the revised build remain unverified.
