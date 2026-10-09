@@ -17,5 +17,6 @@
     <Error Condition="!Exists('generated/Entry.cs')" Text="Run scripts/recompile.sh with the USA SLUS-01384 disc before building." />
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-sprite-visibility.py&quot;" />
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-contact-invincibility.py&quot;" />
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-sound-bank-wait.py&quot;" />
   </Target>
 </Project>

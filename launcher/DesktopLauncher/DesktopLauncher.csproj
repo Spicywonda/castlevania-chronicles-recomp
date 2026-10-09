@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
     <AssemblyName>Play</AssemblyName><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
@@ -10,5 +11,9 @@
     <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
     <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.22.0" />
     <PackageReference Include="NativeFileDialogNET" Version="2.0.2" />
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
+    <EmbeddedResource Include="Assets/LauncherArtwork.jpg" LogicalName="ChroniclesLauncher.Artwork.jpg" />
+    <EmbeddedResource Include="Assets/LauncherLogo.png" LogicalName="ChroniclesLauncher.Logo.png" />
+    <EmbeddedResource Include="Assets/AppIcon.png" LogicalName="ChroniclesLauncher.AppIcon.png" />
   </ItemGroup>
 </Project>

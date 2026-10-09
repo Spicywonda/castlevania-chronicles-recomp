@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime;
 using System.Threading;
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
@@ -14,6 +15,12 @@ public static class RunDiagnostics
     private static Snapshot? _latest;
     private static Snapshot? _logged;
     private static long _calls;
+    private sealed record Hitch(long At, long GapMs, byte PreviousState, Snapshot Current,
+        double JitMs, double GcPauseMs);
+    private static Hitch? _hitch;
+    private static long _lastVSyncAt = -1;
+    private static TimeSpan _lastJit, _lastGcPause;
+    private static byte _previousState;
     private static long _lastStateLog;
     private static int _sampling;
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -30,6 +37,24 @@ public static class RunDiagnostics
     public static void BeforeVSync(CpuContext cpu, IMemory memory)
     {
         Interlocked.Increment(ref _calls);
+        var now = Clock.ElapsedMilliseconds;
+        var jit = JitInfo.GetCompilationTime(currentThread: true);
+        var gcPause = GC.GetTotalPauseDuration();
+        var gap = _lastVSyncAt < 0 ? 0 : now - _lastVSyncAt;
+        // Observe every call, before the snapshot throttle. VSync gaps include
+        // intentional waits and are not equivalent to rendered frame times.
+        if (gap >= 50)
+        {
+            var pending = Volatile.Read(ref _hitch);
+            if (pending is null || gap > pending.GapMs)
+                Volatile.Write(ref _hitch, new Hitch(now, gap, _previousState,
+                    Capture(cpu, memory), Math.Max(0, (jit - _lastJit).TotalMilliseconds),
+                    Math.Max(0, (gcPause - _lastGcPause).TotalMilliseconds)));
+        }
+        _lastVSyncAt = now;
+        _lastJit = jit;
+        _lastGcPause = gcPause;
+        _previousState = memory.ReadU8(0x80059286);
         var latest = Volatile.Read(ref _latest);
         if (latest is not null && Clock.ElapsedMilliseconds - latest.At < 16) return;
         var old = _logged;
@@ -56,12 +81,18 @@ public static class RunDiagnostics
         double lastCpu = 0;
         long lastPrivate = 0, lastReport = lastTime;
         using (var p = Process.GetCurrentProcess()) lastCpu = p.TotalProcessorTime.TotalMilliseconds;
-        Console.WriteLine("[Diagnostics] CPU core%=100 means one full core; RAM in MiB; cheats mask: health=1 hearts=2 lives=4. VSync calls are not rendered FPS.");
+        Console.WriteLine("[Diagnostics] CPU core%=100 means one full core; RAM in MiB; cheats mask: health=1 hearts=2 lives=4 invincible=8. VSync calls are not rendered FPS.");
         return new Timer(_ =>
         {
             if (Interlocked.Exchange(ref _sampling, 1) != 0) return;
             try
             {
+                // Log on the sampler, never on the game thread. Retain only the
+                // largest gap per sampler interval to bound memory and log volume.
+                var hitch = Interlocked.Exchange(ref _hitch, null);
+                if (hitch is not null)
+                    Console.WriteLine(FormattableString.Invariant(
+                        $"[VSyncGap] t={hitch.At}ms gapMs={hitch.GapMs} gameThreadJitMs={hitch.JitMs:F2} processGcPauseMs={hitch.GcPauseMs:F2} previousState={hitch.PreviousState} {Describe(hitch.Current)}"));
                 using var p = Process.GetCurrentProcess();
                 var now = Clock.ElapsedMilliseconds;
                 var cpu = p.TotalProcessorTime.TotalMilliseconds;

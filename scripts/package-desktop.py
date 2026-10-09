@@ -16,14 +16,20 @@ if mac:
     content = app/'Contents'
     target = content/'MacOS'
     target.mkdir(parents=True)
+    (content/'Resources').mkdir()
+    shutil.copy2(root/'launcher/DesktopLauncher/Assets/AppIcon.icns',content/'Resources/AppIcon.icns')
     (content/'Info.plist').write_bytes(plistlib.dumps({
         'CFBundleIdentifier':'com.spicywonda.castlevania-chronicles-recomp',
         'CFBundleName':'Castlevania Chronicles','CFBundleExecutable':'Play',
-        'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.3.6',
-        'CFBundleVersion':'10','NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
+        'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.3.8',
+        'CFBundleIconFile':'AppIcon.icns','CFBundleVersion':'11','NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
 else: target = package
 shutil.copy2(build/'launcher'/launcher_name,target/launcher_name)
 (target/launcher_name).chmod(0o755)
+if not win and not mac:
+    shutil.copy2(root/'launcher/DesktopLauncher/Assets/AppIcon.png',target/'AppIcon.png')
+    shutil.copy2(root/'launcher/DesktopLauncher/install-desktop.sh',target/'install-desktop.sh')
+    (target/'install-desktop.sh').chmod(0o755)
 runtime = target/'runtime'
 shutil.copytree(build/'game',runtime)
 shutil.copyfile(root/'vendor/RecompOne/RecompOne.Runtime/Host/Window/Assets/NotoSans-Regular.ttf',runtime/'LauncherFont.ttf')
@@ -47,11 +53,13 @@ for filename in (['CastlevaniaChronicles.exe','coreclr.dll','hostfxr.dll','hostp
                  ['CastlevaniaChronicles','libcoreclr.so','libhostfxr.so','libhostpolicy.so','libglfw.so.3','libcimgui.so','nfd.so','libSDL2-2.0.so','libopenal.so']): arch(runtime/filename)
 for p in package.rglob('*'):
     assert not p.is_symlink() and p.suffix.lower() not in {'.cue','.bin','.iso','.chd','.sav','.mcr'},f'Unexpected user data: {p}'
-(runtime/'README.txt').write_text('''CASTLEVANIA CHRONICLES RECOMP — 0.3.6 preview
+(runtime/'README.txt').write_text('''CASTLEVANIA CHRONICLES RECOMP — 0.3.8 preview
 
 Open Play, choose your USA SLUS-01384 CUE or CHD, then click Play.
 Keep a CUE and its referenced BIN files together. You can also drop the CUE/CHD onto the launcher.
 The selected disc is remembered. No .NET installation is required.
+Starting a game prepares its code before opening the game window; allow a few seconds.
+This preparation runs once per process and is not repeated by Hard Reset.
 Keep the runtime folder alongside Play. Do not move individual files out of it.
 Open logs in the launcher reveals run.log, validate.log and your settings.
 During play, press F1, open Controls > Keyboard and gamepad...
@@ -63,6 +71,7 @@ Cheats pause during transitions and stage-clear scoring.
 Invincibility prevents contact damage and knockback without freezing player state.
 Invincibility and infinite health do not prevent falls or instant death.
 
+Gameplay sound-bank transitions retain one refresh instead of three.
 Audio: corrected manual SPU uploads and a shared 70 ms output reserve.
 Windows, macOS and Linux include the same cheat, respawn and Hard Reset fixes.
 The launcher and in-game menus start in English.

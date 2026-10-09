@@ -35,7 +35,7 @@ ConfigManager.Load();
 GameRuntime.Defaults(view => view.Language = "en");
 if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
 ConfigManager.SaveGame();
-Console.WriteLine("[Build] Chronicles desktop preview 0.3.6 controls and invincibility — stages 1–8");
+Console.WriteLine("[Build] Chronicles desktop preview 0.3.8 sound-bank transition — stages 1–8");
 var exitCode = 0;
 Chronicles.Widescreen.Initialize();
 Chronicles.Cheats.Initialize();
@@ -46,6 +46,7 @@ GameRuntime.Run(() =>
     var memory = new PSMemory();
     try
     {
+        Chronicles.CodeWarmup.Prepare();
         Recompiled.Entry.Run(memory, cuePath, "Castlevania Chronicles — Development");
     }
     catch (RecompOne.Runtime.HardResetSignal)

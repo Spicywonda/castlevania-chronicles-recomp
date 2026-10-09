@@ -1,0 +1,10 @@
+using System.Runtime;
+using System.Runtime.CompilerServices;
+var count=Chronicles.CodeWarmup.Prepare();
+if(count<3000)throw new Exception($"Missing game methods: {count}");
+if(Chronicles.CodeWarmup.Prepare()!=0)throw new Exception("Warmup repeated");
+var before=JitInfo.GetCompiledMethodCount();
+RuntimeHelpers.PrepareMethod(typeof(Recompiled.CastlevaniaChronicles_stage1).GetMethod("func_8010A034_stage1")!.MethodHandle);
+RuntimeHelpers.PrepareMethod(typeof(Recompiled.CastlevaniaChronicles_main).GetMethod("func_80018720")!.MethodHandle);
+if(JitInfo.GetCompiledMethodCount()!=before)throw new Exception("Game functions still required compilation");
+Console.WriteLine($"PASS prepared {count} methods, no repeated work, boss/room methods already compiled");

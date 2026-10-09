@@ -25,12 +25,15 @@ var runtime = Path.Combine(AppContext.BaseDirectory, "runtime");
 ((Silk.NET.Core.Loader.DefaultPathResolver)Silk.NET.Core.Loader.PathResolver.Default)
     .Resolvers.Add(name => new[] { Path.Combine(runtime, Path.GetFileName(name)) });
 var options = WindowOptions.Default with {
-    Title = "Castlevania Chronicles", Size = new Vector2D<int>(720, 440),
+    Title = "Castlevania Chronicles", Size = new Vector2D<int>(960, 580),
     WindowBorder = WindowBorder.Fixed, VSync = true, FramesPerSecond = 30, UpdatesPerSecond = 30,
     API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, new APIVersion(3, 3))
 };
 using var window = Window.Create(options);
 GL? gl = null;
+uint artworkTexture = 0;
+uint logoTexture = 0;
+Vector2 logoSize = default;
 ImGuiController? ui = null;
 IInputContext? input = null;
 var disc = args.FirstOrDefault() ?? LauncherStorage.LoadSelectedPath(LauncherStorage.DataDirectory) ?? "";
@@ -42,7 +45,7 @@ var data = LauncherStorage.DataDirectory;
 var game = Path.Combine(runtime, OperatingSystem.IsWindows() ? "CastlevaniaChronicles.exe" : "CastlevaniaChronicles");
 var accent = new Vector4(.78f,.24f,.30f,1);
 var muted = new Vector4(.57f,.59f,.65f,1);
-ImFontPtr titleFont = default;
+
 void Fail(string message) { status = message; error = true; }
 void Browse() {
     try {
@@ -73,7 +76,32 @@ void OpenLogs() {
     } catch (Exception e) { Fail(e.Message); }
 }
 window.Load += () => {
+    if (!OperatingSystem.IsMacOS())
+    {
+        using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("ChroniclesLauncher.AppIcon.png")!;
+        var icon = StbImageSharp.ImageResult.FromStream(stream, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
+        window.SetWindowIcon(new[] { new Silk.NET.Core.RawImage(icon.Width, icon.Height, icon.Data) });
+    }
     gl = GL.GetApi(window);
+    uint LoadTexture(string resource, out Vector2 dimensions)
+    {
+        using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"Missing launcher image: {resource}");
+        var pixels = StbImageSharp.ImageResult.FromStream(stream, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
+        dimensions = new Vector2(pixels.Width, pixels.Height);
+        var texture = gl.GenTexture();
+        gl.BindTexture(TextureTarget.Texture2D, texture);
+        unsafe { fixed (byte* bytes = pixels.Data)
+            gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)pixels.Width, (uint)pixels.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, bytes); }
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+        gl.BindTexture(TextureTarget.Texture2D, 0);
+        return texture;
+    }
+    artworkTexture = LoadTexture("ChroniclesLauncher.Artwork.jpg", out _);
+    logoTexture = LoadTexture("ChroniclesLauncher.Logo.png", out logoSize);
     input = window.CreateInput();
     ui = new ImGuiController(gl, window, input, null, () => {
         var io = ImGui.GetIO();
@@ -82,8 +110,8 @@ window.Load += () => {
         var font = Path.Combine(runtime,"LauncherFont.ttf");
         if (File.Exists(font)) {
             io.Fonts.AddFontFromFileTTF(font,17);
-            titleFont = io.Fonts.AddFontFromFileTTF(font,35);
-        } else { io.Fonts.AddFontDefault(); titleFont = io.Fonts.AddFontDefault(); }
+
+        } else { io.Fonts.AddFontDefault(); }
         var style = ImGui.GetStyle();
         style.WindowPadding = new Vector2(36,28); style.FramePadding = new Vector2(14,12);
         style.ItemSpacing = new Vector2(12,12); style.FrameRounding = 7; style.WindowBorderSize = 0;
@@ -116,24 +144,39 @@ window.Render += delta => {
     var size = ImGui.GetIO().DisplaySize;
     ImGui.SetNextWindowPos(Vector2.Zero); ImGui.SetNextWindowSize(size);
     ImGui.Begin("Launcher", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings);
+    var draw = ImGui.GetWindowDrawList();
+    var artWidth = size.Y * .75f;
+    var artLeft = size.X - artWidth;
+    if (artworkTexture != 0)
+    {
+        draw.AddImage((nint)artworkTexture, new Vector2(artLeft, 0), size);
+        var dark = ImGui.ColorConvertFloat4ToU32(new Vector4(.055f,.06f,.08f,1));
+        var clear = ImGui.ColorConvertFloat4ToU32(new Vector4(.055f,.06f,.08f,0));
+        draw.AddRectFilledMultiColor(new Vector2(artLeft,0), new Vector2(artLeft+180,size.Y), dark,clear,clear,dark);
+        var shade = ImGui.ColorConvertFloat4ToU32(new Vector4(.055f,.06f,.08f,.8f));
+        draw.AddRectFilledMultiColor(new Vector2(artLeft,size.Y-130),size,clear,clear,shade,shade);
+    }
+    const float contentWidth = 480;
     ImGui.TextColored(accent,"PLAYSTATION RECOMPILATION");
-    ImGui.SetCursorPosY(66);
-    ImGui.PushFont(titleFont); ImGui.TextUnformatted("Castlevania Chronicles"); ImGui.PopFont();
+    var logoDisplaySize = new Vector2(300, 300 * logoSize.Y / logoSize.X);
+    var logoPosition = new Vector2(36 + (contentWidth-logoDisplaySize.X)/2, 52);
+    draw.AddImage((nint)logoTexture, logoPosition, logoPosition+logoDisplaySize);
+    ImGui.SetCursorPosY(268);
     ImGui.TextColored(muted,"Your disc. The classic, on your desktop.");
-    ImGui.SetCursorPosY(176);
+    ImGui.SetCursorPosY(312);
     ImGui.TextUnformatted("GAME DISC"); ImGui.SameLine(); ImGui.TextColored(muted,"USA  /  CUE + BIN or CHD");
     ImGui.BeginDisabled(session is not null);
-    ImGui.SetNextItemWidth(size.X - 196);
+    ImGui.SetNextItemWidth(contentWidth - 124);
     ImGui.InputTextWithHint("##disc", "Choose or drop your disc image here", ref disc, 4096);
     ImGui.SameLine(); if (ImGui.Button("Browse",new Vector2(112,46))) Browse();
-    ImGui.SetCursorPosY(270);
+    ImGui.SetCursorPosY(405);
     ImGui.PushStyleColor(ImGuiCol.Button,accent);
     ImGui.PushStyleColor(ImGuiCol.ButtonHovered,new Vector4(.9f,.30f,.36f,1));
     ImGui.PushStyleColor(ImGuiCol.ButtonActive,new Vector4(.64f,.18f,.24f,1));
-    if (ImGui.Button(session is not null ? "Running..." : "Play",new Vector2(size.X-72,52))) Play();
+    if (ImGui.Button(session is not null ? "Running..." : "Play",new Vector2(contentWidth,52))) Play();
     ImGui.PopStyleColor(3); ImGui.EndDisabled();
-    ImGui.SetCursorPosY(338);
-    ImGui.PushTextWrapPos(size.X-36); ImGui.TextColored(error ? new Vector4(1,.48f,.48f,1) : muted,status); ImGui.PopTextWrapPos();
+    ImGui.SetCursorPosY(475);
+    ImGui.PushTextWrapPos(36+contentWidth); ImGui.TextColored(error ? new Vector4(1,.48f,.48f,1) : muted,status); ImGui.PopTextWrapPos();
     ImGui.SetCursorPosY(size.Y-54);
     if (ImGui.SmallButton("Open logs")) OpenLogs();
     ImGui.SameLine(); ImGui.TextColored(muted,"   Disc selection is remembered.");
@@ -146,7 +189,7 @@ catch (Exception e) {
     Console.Error.WriteLine(e);
     return 1;
 }
-finally { if (session is not null) { try { session.GetAwaiter().GetResult(); } catch { } } ui?.Dispose(); input?.Dispose(); gl?.Dispose(); }
+finally { if (session is not null) { try { session.GetAwaiter().GetResult(); } catch { } } ui?.Dispose(); input?.Dispose(); if (artworkTexture != 0) gl?.DeleteTexture(artworkTexture); if (logoTexture != 0) gl?.DeleteTexture(logoTexture); gl?.Dispose(); }
 return 0;
 
 }
