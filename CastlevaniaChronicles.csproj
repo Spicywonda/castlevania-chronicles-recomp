@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <ProjectReference Include="launcher/LauncherCore/LauncherCore.csproj" />
     <Compile Include="generated/**/*.cs" />
     <Compile Include="patches/**/*.cs" />
     <ProjectReference Include="vendor/RecompOne/RecompOne.Runtime/RecompOne.Runtime.csproj" />
@@ -18,5 +19,6 @@
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-sprite-visibility.py&quot;" />
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-contact-invincibility.py&quot;" />
     <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-sound-bank-wait.py&quot;" />
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/scripts/patch-extras.py&quot;" />
   </Target>
 </Project>

@@ -21,6 +21,7 @@ public static class GameLaunch
             RedirectStandardError = true,
             CreateNoWindow = true
         };
+        info.Environment["CHRONICLES_DATA_DIR"] = Path.GetFullPath(dataDirectory);
         info.ArgumentList.Add(discPath);
         return info;
     }

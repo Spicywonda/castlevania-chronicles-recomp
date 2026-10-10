@@ -8,7 +8,7 @@ The goal is a 16:9 view with more scenery visible, original sprite proportions, 
 CHRONICLES_WIDESCREEN=1 ./scripts/run-macos.sh
 ```
 
-F8 toggles the experiment. The default is 4:3. Menus retain 4:3 and HUD elements retain their central positions. The extension is restricted to the `stage1` overlay, which also includes the introduction; the introduction still needs separate handling.
+F8 toggles the experiment. The default is 4:3. Menus retain 4:3 and HUD elements retain their central positions. The extension is restricted to the `stage1` overlay and gameplay states 15–22 with stage index 0. Introduction, loading and menu states retain 4:3. Background, terrain and actor margins share the gameplay guard, including when a previous frame still had a wide viewport.
 
 ## Rendering approach
 
@@ -29,9 +29,13 @@ Enemy activation, updates, and removal are unchanged. Extending draw limits alon
 ## Remaining validation
 
 - Reproduce and fix corrupted imagery and side-margin pop-in.
-- Separate introduction rendering from gameplay.
+- Visually verify introduction and gameplay separation (the state guard is covered by regression checks).
 - Check other sprite types and enemy activation.
 - Test room edges, transitions, and graphics packet capacity.
 - Compare every change with the 4:3 reference.
 
 The synthetic checks cover start, partial scroll, full scroll, and original-mode patch state. They do not cover the visual failures reported during gameplay.
+
+## October 9 scope correction
+
+Five new regression cases reproduced background writes in intro/loading states and unrelated stage overlays. Shared eligibility now prevents those writes and terrain-packet emission. All 12 widescreen checks pass. This establishes state isolation, not correct scenery or enemy behavior at every room edge.

@@ -21,8 +21,8 @@ if mac:
     (content/'Info.plist').write_bytes(plistlib.dumps({
         'CFBundleIdentifier':'com.spicywonda.castlevania-chronicles-recomp',
         'CFBundleName':'Castlevania Chronicles','CFBundleExecutable':'Play',
-        'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.3.8',
-        'CFBundleIconFile':'AppIcon.icns','CFBundleVersion':'11','NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
+        'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.3.9',
+        'CFBundleIconFile':'AppIcon.icns','CFBundleVersion':'12','NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
 else: target = package
 shutil.copy2(build/'launcher'/launcher_name,target/launcher_name)
 (target/launcher_name).chmod(0o755)
@@ -53,7 +53,7 @@ for filename in (['CastlevaniaChronicles.exe','coreclr.dll','hostfxr.dll','hostp
                  ['CastlevaniaChronicles','libcoreclr.so','libhostfxr.so','libhostpolicy.so','libglfw.so.3','libcimgui.so','nfd.so','libSDL2-2.0.so','libopenal.so']): arch(runtime/filename)
 for p in package.rglob('*'):
     assert not p.is_symlink() and p.suffix.lower() not in {'.cue','.bin','.iso','.chd','.sav','.mcr'},f'Unexpected user data: {p}'
-(runtime/'README.txt').write_text('''CASTLEVANIA CHRONICLES RECOMP — 0.3.8 preview
+(runtime/'README.txt').write_text('''CASTLEVANIA CHRONICLES RECOMP — 0.3.9 preview
 
 Open Play, choose your USA SLUS-01384 CUE or CHD, then click Play.
 Keep a CUE and its referenced BIN files together. You can also drop the CUE/CHD onto the launcher.
@@ -71,6 +71,10 @@ Cheats pause during transitions and stage-clear scoring.
 Invincibility prevents contact damage and knockback without freezing player state.
 Invincibility and infinite health do not prevent falls or instant death.
 
+Movie frame waits avoid false read restarts that interrupt video audio.
+Gallery images refresh correctly; interview selection no longer immediately skips it.
+Play and direct game launch use the same save directory.
+Use Import card (slot 1) for raw 128 KiB memory cards; existing cards are backed up.
 Gameplay sound-bank transitions retain one refresh instead of three.
 Audio: corrected manual SPU uploads and a shared 70 ms output reserve.
 Windows, macOS and Linux include the same cheat, respawn and Hard Reset fixes.

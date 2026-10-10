@@ -16,6 +16,8 @@ foreach (var scroll in new[] { 0, 20, 100 })
 Check($"Background extends visible map and restores game state at scroll {scroll}", () =>
 {
     var m = new PSMemory();
+    m.WriteU8(0x80059286,15);
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f;
     var c = new CpuContext { A0 = 0x800593C8, RA = 0x80101520 };
     var p = c.A0;
     m.WriteU16(p + 4, 128); m.WriteU16(p + 8, 256);
@@ -34,6 +36,8 @@ Check($"Background extends visible map and restores game state at scroll {scroll
 Check("4:3 and menu backgrounds remain unchanged", () =>
 {
     var m = new PSMemory();
+    m.WriteU8(0x80059286,15);
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f;
     var c = new CpuContext { A0 = 0x800593C8, RA = 0x80101520 };
     m.WriteU16(c.A0 + 4, 128); m.WriteU16(c.A0 + 8, 256); m.WriteU16(c.A0 + 10, 32);
     foreach (var enabled in new[] { false, true })
@@ -49,6 +53,8 @@ foreach (var extent in new[] { 31, 32 })
 Check($"Terrain margins draw real neighboring columns with UV extent {extent}", () =>
 {
     var m = new PSMemory();
+    m.WriteU8(0x80059286,15);
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f;
     var c = new CpuContext { A0 = 0x80010000, A1 = 0x80011000, A2 = 2, A3 = 28, RA = 0x80101670 };
     m.WriteU16(c.A0 + 6, 16); m.WriteU16(c.A0 + 12, 96);
     m.WriteU8(c.A0 + 16, 128); m.WriteU8(c.A0 + 17, 128); m.WriteU8(c.A0 + 18, 128);
@@ -82,6 +88,8 @@ Check($"Terrain margins draw real neighboring columns with UV extent {extent}", 
 Check("Sprite margins preserve original mode and stateful actor handlers", () =>
 {
     var m = new PSMemory();
+    m.WriteU8(0x80059286,15);
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f;
     const uint actor = 0x8005A848;
     m.WriteU8(actor + 1, 12);
     m.WriteU32(0x800107A8, 0x800221DC);
@@ -101,5 +109,26 @@ Check("Sprite margins preserve original mode and stateful actor handlers", () =>
     Widescreen.Enabled = true;
     RecompOne.Runtime.Hle.Display.WideAspect = 0;
     Require(Widescreen.ActorMargin(m, actor) == 0, "Menu bounds changed");
+});
+foreach (var context in new[] { (Stage: (byte)0, State: (byte)0), ((byte)0, (byte)8), ((byte)0, (byte)25), ((byte)1, (byte)15), ((byte)7, (byte)20) })
+Check($"Unsupported stage/state {context.Item1}/{context.Item2} leaves backgrounds and packets untouched", () =>
+{
+    var m = new PSMemory();
+    m.WriteU8(0x80059286,15);
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f;
+    var c = new CpuContext { A0=0x80010000, A1=0x80011000, A2=1, A3=28, RA=0x80101670 };
+    m.WriteU8(0x800592C4, context.Item1); m.WriteU8(0x80059286, context.Item2);
+    m.WriteU16(c.A0+8,256); m.WriteU16(c.A0+12,96);
+    m.WriteU32(c.A0+20,0x80012000);
+    m.WriteU16(0x80012002,20); m.WriteU16(0x80012004,1); m.WriteU32(0x80012008,0x80013000);
+    m.WriteU32(c.A1+4,0x80014000); m.WriteU32(0x80097CA8,0x80015000);
+    Widescreen.Enabled=true;
+    RecompOne.Runtime.Hle.Display.WideAspect=16f/9f; // stale previous frame must not authorize writes
+    var before=m.Ram.ToArray();
+    Widescreen.BeforeBackground(c,m);
+    Require(before.SequenceEqual(m.Ram.ToArray()),"Unsupported background was widened");
+    Widescreen.AfterBackground(c,m);
+    TileMargins.Before32(c,m); TileMargins.After(c,m);
+    Require(before.SequenceEqual(m.Ram.ToArray()),"Unsupported stage emitted margin packets");
 });
 return failures == 0 ? 0 : 1;

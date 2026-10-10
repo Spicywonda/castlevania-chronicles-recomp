@@ -66,6 +66,22 @@ void Play() {
         session = GameSession.RunAsync(GameLaunch.CreateValidationStartInfo(game, disc, data), Path.Combine(data,"validate.log"));
     } catch (Exception e) { Fail(e.Message); session = null; }
 }
+void ImportCard() {
+    try {
+        using var dialog = new NativeFileDialog().SelectFile().AddFilter("PlayStation memory card", "sav,mcr,mcd");
+        if (dialog.Open(out string? path, null) != DialogResult.Okay || path is null) return;
+        // Respect a custom slot-one path already selected in the game settings.
+        var destination = Path.Combine(data, "carda.sav");
+        var settingsPath = Path.Combine(data, "settings.json");
+        if (File.Exists(settingsPath)) {
+            using var settings = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
+            if (settings.RootElement.TryGetProperty("CardAPath", out var value) && value.GetString() is { Length: > 0 } configured)
+                destination = Path.GetFullPath(configured, data);
+        }
+        MemoryCardStorage.Import(path, destination);
+        status = "Memory card imported into slot 1. Previous card backed up."; error = false;
+    } catch (Exception e) { Fail(e.Message); }
+}
 void OpenLogs() {
     try {
         Directory.CreateDirectory(data);
@@ -179,7 +195,9 @@ window.Render += delta => {
     ImGui.PushTextWrapPos(36+contentWidth); ImGui.TextColored(error ? new Vector4(1,.48f,.48f,1) : muted,status); ImGui.PopTextWrapPos();
     ImGui.SetCursorPosY(size.Y-54);
     if (ImGui.SmallButton("Open logs")) OpenLogs();
-    ImGui.SameLine(); ImGui.TextColored(muted,"   Disc selection is remembered.");
+    ImGui.SameLine(); ImGui.BeginDisabled(session is not null);
+    if (ImGui.SmallButton("Import card (slot 1)")) ImportCard();
+    ImGui.EndDisabled();
     ImGui.End(); ui.Render();
 };
 try { window.Run(); }

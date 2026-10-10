@@ -31,11 +31,17 @@ if (!chooseDisc && (args.Length != 1 || !File.Exists(args[0])))
 }
 
 var cuePath = chooseDisc ? null : Path.GetFullPath(args[0]);
+var dataDirectory = ChroniclesLauncher.LauncherStorage.DataDirectory;
+ChroniclesLauncher.MemoryCardStorage.AdoptMissingCards(dataDirectory,
+    Environment.CurrentDirectory, AppContext.BaseDirectory,
+    Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..")));
+Directory.SetCurrentDirectory(dataDirectory);
+Console.WriteLine($"[Storage] {dataDirectory}");
 ConfigManager.Load();
 GameRuntime.Defaults(view => view.Language = "en");
 if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
 ConfigManager.SaveGame();
-Console.WriteLine("[Build] Chronicles desktop preview 0.3.8 sound-bank transition — stages 1–8");
+Console.WriteLine("[Build] Chronicles desktop preview 0.3.9 extras and movie audio — stages 1–8");
 var exitCode = 0;
 Chronicles.Widescreen.Initialize();
 Chronicles.Cheats.Initialize();

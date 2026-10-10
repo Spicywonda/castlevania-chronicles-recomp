@@ -8,11 +8,11 @@ public static class TileMargins
     private readonly record struct Call(uint Background, uint OrderingTable, uint Depth, uint EmptyPage, int UvExtent);
     private static readonly Stack<Call> _calls = new();
 
-    public static void Before31(CpuContext cpu, IMemory memory) => Before(cpu, 31);
-    public static void Before32(CpuContext cpu, IMemory memory) => Before(cpu, 32);
-    private static void Before(CpuContext cpu, int uvExtent)
+    public static void Before31(CpuContext cpu, IMemory memory) => Before(cpu, memory, 31);
+    public static void Before32(CpuContext cpu, IMemory memory) => Before(cpu, memory, 32);
+    private static void Before(CpuContext cpu, IMemory memory, int uvExtent)
     {
-        _calls.Push(Widescreen.Enabled && cpu.RA >= 0x80100000 && cpu.RA < 0x8011C800
+        _calls.Push(Widescreen.CanExtend(memory) && cpu.RA >= 0x80100000 && cpu.RA < 0x8011C800
             ? new(cpu.A0, cpu.A1, cpu.A2 & 0xFFFF, cpu.A3 & 0xFF, uvExtent) : default);
     }
 

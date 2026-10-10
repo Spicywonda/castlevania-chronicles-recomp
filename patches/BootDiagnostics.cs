@@ -72,7 +72,7 @@ public static class BootDiagnostics
 
     public static void BeforeVSync(CpuContext cpu, IMemory memory)
     {
-        Widescreen.BeforeVSync();
+        Widescreen.BeforeVSync(memory);
         RunDiagnostics.BeforeVSync(cpu, memory);
         Cheats.BeforeVSync(cpu, memory);
         if (!Enabled || Environment.TickCount64 < _nextCheck) return;

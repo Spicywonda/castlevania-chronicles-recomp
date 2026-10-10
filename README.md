@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/tag/v0.3.8">Download 0.3.8</a> ·
+  <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/tag/v0.3.9">Download 0.3.9</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#controls-and-cheats">Controls &amp; cheats</a> ·
   <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/issues">Report an issue</a>
@@ -16,16 +16,16 @@
 
 ## Download
 
-**0.3.8 is a development preview.** Full-game compatibility is still being tested.
+**0.3.9 is a development preview.** Full-game compatibility is still being tested.
 
 | Platform | Download |
 | --- | --- |
-| Windows x64 | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.8/CastlevaniaChronicles-0.3.8-win-x64.zip) |
-| macOS Apple Silicon | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.8/CastlevaniaChronicles-0.3.8-osx-arm64.zip) |
-| Linux x64 | [tar.gz](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.8/CastlevaniaChronicles-0.3.8-linux-x64.tar.gz) |
+| Windows x64 | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-win-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-osx-arm64.zip) |
+| Linux x64 | [tar.gz](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-linux-x64.tar.gz) |
 
 Packages include the .NET runtime. A separate .NET installation is not required.
-[SHA-256 checksums](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.8/SHA256SUMS-0.3.8.txt) are provided with the release.
+[SHA-256 checksums](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/SHA256SUMS-0.3.9.txt) are provided with the release.
 
 ## Getting started
 
@@ -40,13 +40,14 @@ On Linux, optionally run `./install-desktop.sh` from the extracted folder to add
 
 Detailed guides: [Windows](docs/windows.md) · [macOS](docs/macos.md) · [Linux](docs/linux.md).
 
-## What's new in 0.3.8
+## What's new in 0.3.9
 
-- A redesigned ROM selector with illustrated background, a soft fade, the game logo and platform app icons.
-- Game-code preparation at startup to reduce first-use compilation during play. Hard Reset reuses the prepared code.
-- A shorter sound-bank transition during gameplay: one refresh instead of three. The first boss's transition reproduced a roughly 50 ms wait; the isolated routine measured about 16 ms after the change.
-- Detailed pause diagnostics in `run.log`.
+- Movie playback waits for the next frame without repeatedly restarting disc reads and discarding queued audio.
+- The illustration gallery refreshes correctly, and opening the interview waits for the selection button to be released before accepting a skip.
+- Play and direct game launch now share saves and settings. Existing portable cards are adopted when the destination is empty.
+- **Import card (slot 1)** accepts raw 128 KiB memory cards and backs up an existing card before replacing it.
 
+See [extras, saves and movie audio](docs/extras-and-saves.md) for details.
 All three packages share the same game changes. English menus, saved input bindings and the earlier cheat, respawn, SPU transfer and Hard Reset fixes are retained.
 
 ## Controls and cheats
@@ -66,7 +67,7 @@ Cheats start disabled each session. **Falls and instant death still apply**, inc
 
 - All eight stage overlays are registered. This does not mean every stage or a full playthrough has been validated.
 - The sound-bank wait change is covered by 81 automated cases using the recompiled routine. Full gameplay and listening tests across all platforms remain necessary.
-- Distorted audio in videos is still under investigation.
+- The movie audio correction was verified with a 35-second interview run on macOS and compared with independently decoded disc audio. Longer playback and Windows/Linux listening tests remain necessary.
 - Increased CPU use with adaptive VSync was reported on Windows; it is not confirmed fixed.
 - Widescreen remains experimental and disabled by default. Visual corruption and object pop-in have been reported.
 - Saving and physical-controller behavior still need broader testing.
@@ -118,6 +119,8 @@ macOS packaging requires Apple's signing and packaging tools. Build outputs are 
 ./scripts/dotnet.sh run --project tests/WarmupChecks -c Release
 ./scripts/dotnet.sh run --project tests/SoundBankChecks -c Release
 ./scripts/dotnet.sh run --project tests/LauncherChecks -c Release
+./scripts/dotnet.sh run --project tests/ExtrasChecks -c Release
+./scripts/dotnet.sh run --project tests/WidescreenChecks -c Release
 ```
 
 </details>

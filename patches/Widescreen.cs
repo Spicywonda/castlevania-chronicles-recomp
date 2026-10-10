@@ -12,7 +12,7 @@ public static class Widescreen
     public static int SpriteMargin => Enabled && Display.WideAspect > 0 ? 43 : 0;
     public static uint ActorMargin(IMemory memory, uint actor)
     {
-        if (SpriteMargin == 0) return 0;
+        if (!CanExtend(memory)) return 0;
         int type = memory.ReadU8(actor + 1) - 12;
         if (type < 0 || type >= 25) return 0;
         var handler = memory.ReadU32(0x800107A8 + (uint)type * 4);
@@ -31,15 +31,21 @@ public static class Widescreen
         });
     }
 
-    public static void BeforeVSync()
+    private static bool IsSupportedGameplay(IMemory memory) =>
+        memory.ReadU8(0x800592C4) == 0 && memory.ReadU8(0x80059286) is >= 15 and <= 22;
+
+    public static bool CanExtend(IMemory memory) =>
+        Enabled && Display.WideAspect > 0 && IsSupportedGameplay(memory);
+
+    public static void BeforeVSync(IMemory memory)
     {
-        Display.WideAspect = Enabled && Dispatcher.ActiveNames.Contains("stage1") ? 16f / 9f : 0;
+        Display.WideAspect = Enabled && IsSupportedGameplay(memory) && Dispatcher.ActiveNames.Contains("stage1") ? 16f / 9f : 0;
     }
 
     public static void BeforeBackground(CpuContext cpu, IMemory memory)
     {
         var p = cpu.A0;
-        if (!Enabled || cpu.RA < 0x80100000 || cpu.RA >= 0x8011C800 ||
+        if (!CanExtend(memory) || cpu.RA < 0x80100000 || cpu.RA >= 0x8011C800 ||
             memory.ReadU16(p + 8) != 256 || (memory.ReadU32(p) & 0x80000000) != 0)
         {
             _backgrounds.Push(default);
