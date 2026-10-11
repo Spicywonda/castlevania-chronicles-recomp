@@ -3,6 +3,9 @@ using RecompOne.Runtime.Config;
 using RecompOne.Runtime.Memory;
 using GameRuntime = RecompOne.Runtime.Runtime;
 
+using var installationLease = ChroniclesLauncher.Updates.InstallationLease.TryAcquire(AppContext.BaseDirectory);
+if (installationLease is null) { Console.Error.WriteLine("This installation is in use or being updated. Close the other game and try again."); return 1; }
+
 if (args.Length == 2 && args[0] == "--validate-disc")
 {
     try
@@ -41,7 +44,7 @@ ConfigManager.Load();
 GameRuntime.Defaults(view => view.Language = "en");
 if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
 ConfigManager.SaveGame();
-Console.WriteLine("[Build] Chronicles desktop preview 0.3.9 extras and movie audio — stages 1–8");
+Console.WriteLine($"[Build] Chronicles {ChroniclesLauncher.Updates.BuildVersion.Current} — stages 1–8");
 var exitCode = 0;
 Chronicles.Widescreen.Initialize();
 Chronicles.Cheats.Initialize();

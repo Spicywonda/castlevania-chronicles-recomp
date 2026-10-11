@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Assemble a launcher and its private runtime, with no disc or user data."""
 import hashlib, json, plistlib, shutil, struct, subprocess, sys, tarfile, zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 build = Path(sys.argv[1]).resolve(strict=True)
 rid = sys.argv[2]
 root = Path(__file__).resolve().parents[1]
+version = ET.parse(root/'Directory.Build.props').findtext('.//Version')
+assert version
 name = 'CastlevaniaChronicles-' + rid
 package = build / name
 package.mkdir()
@@ -21,8 +24,8 @@ if mac:
     (content/'Info.plist').write_bytes(plistlib.dumps({
         'CFBundleIdentifier':'com.spicywonda.castlevania-chronicles-recomp',
         'CFBundleName':'Castlevania Chronicles','CFBundleExecutable':'Play',
-        'CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.3.9',
-        'CFBundleIconFile':'AppIcon.icns','CFBundleVersion':'12','NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
+        'CFBundlePackageType':'APPL','CFBundleShortVersionString':version,
+        'CFBundleIconFile':'AppIcon.icns','CFBundleVersion':version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'14.0'}))
 else: target = package
 shutil.copy2(build/'launcher'/launcher_name,target/launcher_name)
 (target/launcher_name).chmod(0o755)
@@ -53,7 +56,7 @@ for filename in (['CastlevaniaChronicles.exe','coreclr.dll','hostfxr.dll','hostp
                  ['CastlevaniaChronicles','libcoreclr.so','libhostfxr.so','libhostpolicy.so','libglfw.so.3','libcimgui.so','nfd.so','libSDL2-2.0.so','libopenal.so']): arch(runtime/filename)
 for p in package.rglob('*'):
     assert not p.is_symlink() and p.suffix.lower() not in {'.cue','.bin','.iso','.chd','.sav','.mcr'},f'Unexpected user data: {p}'
-(runtime/'README.txt').write_text('''CASTLEVANIA CHRONICLES RECOMP — 0.3.9 preview
+(runtime/'README.txt').write_text(f'''CASTLEVANIA CHRONICLES RECOMP — {version}
 
 Open Play, choose your USA SLUS-01384 CUE or CHD, then click Play.
 Keep a CUE and its referenced BIN files together. You can also drop the CUE/CHD onto the launcher.
@@ -85,13 +88,18 @@ This preview includes all eight stage overlay entries. Full-game compatibility
 and the post-boss transition on Windows and Linux still require gameplay testing.
 No game data is included.
 ''',encoding='utf-8')
+# The manifest owns distributed files only; no saves, ROMs, or user settings.
+install_root = app if mac else package
+manifest_files = sorted(p for p in install_root.rglob('*') if p.is_file())
+(install_root/'install-manifest.json').write_text(json.dumps({
+    'Schema': 1, 'Version': version, 'Rid': rid,
+    'Files': [{'Path': p.relative_to(install_root).as_posix(), 'Size': p.stat().st_size,
+               'Sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+               'UnixMode': p.stat().st_mode & 0o777} for p in manifest_files]
+}))
 if mac:
     subprocess.run(['codesign','--force','--deep','--sign','-',str(app)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
-# Keep per-file checksums inside runtime; the signed Mac app uses its code seal.
-if not mac:
-    files=sorted(p for p in package.rglob('*') if p.is_file())
-    (runtime/'SHA256SUMS.txt').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(package).as_posix()}\n' for p in files))
 archive=build/(name+('.zip' if win or mac else '.tar.gz'))
 if mac: subprocess.run(['ditto','-c','-k','--sequesterRsrc','--keepParent',str(package),str(archive)],check=True)
 elif win:

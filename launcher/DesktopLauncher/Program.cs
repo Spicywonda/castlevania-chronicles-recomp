@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ChroniclesLauncher.Updates;
 using System.Numerics;
 using ChroniclesLauncher;
 using ImGuiNET;
@@ -9,7 +10,7 @@ using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Windowing;
 
-try { return RunLauncher(args); }
+try { return UpdateHelper.HandleArguments(args) ?? RunLauncher(args); }
 catch (Exception e) {
     var folder = LauncherStorage.DataDirectory;
     Directory.CreateDirectory(folder);
@@ -36,12 +37,17 @@ uint logoTexture = 0;
 Vector2 logoSize = default;
 ImGuiController? ui = null;
 IInputContext? input = null;
-var disc = args.FirstOrDefault() ?? LauncherStorage.LoadSelectedPath(LauncherStorage.DataDirectory) ?? "";
+var disc = (args.FirstOrDefault()?.StartsWith("--") == true ? null : args.FirstOrDefault()) ?? LauncherStorage.LoadSelectedPath(LauncherStorage.DataDirectory) ?? "";
 var status = "Select your disc to get started.";
 var error = false;
 Task<int>? session = null;
 bool validating = false;
 var data = LauncherStorage.DataDirectory;
+using var updateLifetime = new CancellationTokenSource();
+using var updateHttp = ReleaseClient.CreateHttpClient();
+var updates = UpdateCoordinator.Create(updateHttp, InstallationLease.CanonicalRoot(AppContext.BaseDirectory), data);
+Task<bool>? installing = null;
+
 var game = Path.Combine(runtime, OperatingSystem.IsWindows() ? "CastlevaniaChronicles.exe" : "CastlevaniaChronicles");
 var accent = new Vector4(.78f,.24f,.30f,1);
 var muted = new Vector4(.57f,.59f,.65f,1);
@@ -56,6 +62,7 @@ void Browse() {
     } catch (Exception e) { Fail(e.Message); }
 }
 void Play() {
+    if (updates.Status.Phase == UpdatePhase.Installing) return;
     var selection = DiscSelection.Validate(disc);
     if (!selection.IsValid) { Fail(selection.Error!); return; }
     if (!File.Exists(game)) { Fail("Game files are missing. Extract the entire download and try again."); return; }
@@ -138,7 +145,9 @@ window.Load += () => {
         style.Colors[(int)ImGuiCol.ButtonHovered] = new Vector4(.21f,.22f,.27f,1);
         style.Colors[(int)ImGuiCol.ButtonActive] = new Vector4(.26f,.27f,.32f,1);
     });
-    window.FileDrop += paths => { if (session is null && paths.Length > 0) { disc = paths[0]; status = "Ready to play."; error = false; } };
+    UpdateHelper.Acknowledge(args);
+    _ = updates.StartAsync(updateLifetime.Token);
+    window.FileDrop += paths => { if (session is null && updates.Status.Phase != UpdatePhase.Installing && paths.Length > 0) { disc = paths[0]; status = "Ready to play."; error = false; } };
 };
 window.Render += delta => {
     if (session is { IsCompleted: true }) {
@@ -155,6 +164,10 @@ window.Render += delta => {
             }
         } catch (Exception e) { session = null; window.WindowState = WindowState.Normal; Fail(e.Message); }
     }
+    updates.SetGameRunning(session is not null);
+    if (installing is { IsCompleted: true }) { if (installing.GetAwaiter().GetResult()) { window.Close(); return; } installing = null; }
+    if (installing is null && updates.ReadySince is {} ready && DateTimeOffset.UtcNow-ready >= TimeSpan.FromSeconds(10))
+        installing = updates.InstallIfReadyAsync(updateLifetime.Token);
     ui!.Update((float)delta);
     gl!.Clear(ClearBufferMask.ColorBufferBit);
     var size = ImGui.GetIO().DisplaySize;
@@ -181,7 +194,7 @@ window.Render += delta => {
     ImGui.TextColored(muted,"Your disc. The classic, on your desktop.");
     ImGui.SetCursorPosY(312);
     ImGui.TextUnformatted("GAME DISC"); ImGui.SameLine(); ImGui.TextColored(muted,"USA  /  CUE + BIN or CHD");
-    ImGui.BeginDisabled(session is not null);
+    ImGui.BeginDisabled(session is not null || updates.Status.Phase == UpdatePhase.Installing);
     ImGui.SetNextItemWidth(contentWidth - 124);
     ImGui.InputTextWithHint("##disc", "Choose or drop your disc image here", ref disc, 4096);
     ImGui.SameLine(); if (ImGui.Button("Browse",new Vector2(112,46))) Browse();
@@ -195,10 +208,19 @@ window.Render += delta => {
     ImGui.PushTextWrapPos(36+contentWidth); ImGui.TextColored(error ? new Vector4(1,.48f,.48f,1) : muted,status); ImGui.PopTextWrapPos();
     ImGui.SetCursorPosY(size.Y-54);
     if (ImGui.SmallButton("Open logs")) OpenLogs();
-    ImGui.SameLine(); ImGui.BeginDisabled(session is not null);
+    ImGui.SameLine(); ImGui.BeginDisabled(session is not null || updates.Status.Phase == UpdatePhase.Installing);
     if (ImGui.SmallButton("Import card (slot 1)")) ImportCard();
     ImGui.EndDisabled();
+    UpdatePanel.Draw(updates, updateLifetime.Token);
     ImGui.End(); ui.Render();
+};
+window.Closing += () => {
+    updateLifetime.Cancel();
+    ui?.Dispose(); ui = null;
+    input?.Dispose(); input = null;
+    if (artworkTexture != 0) { gl?.DeleteTexture(artworkTexture); artworkTexture = 0; }
+    if (logoTexture != 0) { gl?.DeleteTexture(logoTexture); logoTexture = 0; }
+    gl?.Dispose(); gl = null;
 };
 try { window.Run(); }
 catch (Exception e) {
@@ -207,7 +229,7 @@ catch (Exception e) {
     Console.Error.WriteLine(e);
     return 1;
 }
-finally { if (session is not null) { try { session.GetAwaiter().GetResult(); } catch { } } ui?.Dispose(); input?.Dispose(); if (artworkTexture != 0) gl?.DeleteTexture(artworkTexture); if (logoTexture != 0) gl?.DeleteTexture(logoTexture); gl?.Dispose(); }
+finally { updateLifetime.Cancel(); if (session is not null) { try { session.GetAwaiter().GetResult(); } catch { } } ui?.Dispose(); input?.Dispose(); if (artworkTexture != 0) gl?.DeleteTexture(artworkTexture); if (logoTexture != 0) gl?.DeleteTexture(logoTexture); gl?.Dispose(); }
 return 0;
 
 }
