@@ -20,6 +20,8 @@ catch (Exception e) {
 }
 
 static int RunLauncher(string[] args) {
+using var launcherLease = InstallationLease.TryAcquireLauncher(InstallationLease.CanonicalRoot(AppContext.BaseDirectory));
+if (launcherLease is null) return 0;
 var runtime = Path.Combine(AppContext.BaseDirectory, "runtime");
 // Silk's loader does not search the single-file extraction directory.
 // Reuse the same native libraries shipped with the game.

@@ -13,8 +13,8 @@ public sealed class UpdateTransaction {
   if(root!=InstallationLease.CanonicalRoot(root)||root==Path.GetPathRoot(root)||Inside(data,root)||Inside(staged,root)||Inside(root,staged)||!Guid.TryParseExact(request.Nonce,"N",out _))throw new InvalidDataException("Unsafe installation layout. Move the application and data into separate folders.");
   var old=InstallManifest.Read(root);var next=InstallManifest.ReadAndValidate(staged,old.Rid,Version.Parse(request.Version));
   if(Version.Parse(old.Version)>=Version.Parse(next.Version))throw new InvalidDataException("The update is not newer.");
-  var existing=old.Files.Select(f=>f.Path).Append(InstallManifest.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-  var replacement=next.Files.Select(f=>f.Path).Append(InstallManifest.FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+  var existing=old.Files.Select(f=>f.Path).Append(InstallManifest.RelativePath(root)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+  var replacement=next.Files.Select(f=>f.Path).Append(InstallManifest.RelativePath(root)).ToHashSet(StringComparer.OrdinalIgnoreCase);
   var operations=new List<Operation>();
   foreach(var path in existing.Union(replacement,StringComparer.OrdinalIgnoreCase)){
    var target=InstallManifest.SafePath(root,path);

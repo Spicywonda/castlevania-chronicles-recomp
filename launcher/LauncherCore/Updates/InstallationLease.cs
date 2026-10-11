@@ -3,7 +3,7 @@ using System.Text;
 namespace ChroniclesLauncher.Updates;
 public static class InstallationLease {
  public static string CanonicalRoot(string path){
-  path=Path.GetFullPath(path);if(File.Exists(path))path=Path.GetDirectoryName(path)!;
+  path=Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));if(File.Exists(path))path=Path.GetDirectoryName(path)!;
   if(Path.GetFileName(path)=="runtime")path=Path.GetDirectoryName(path)!;
   if(Path.GetFileName(path)=="MacOS"&&Path.GetFileName(Path.GetDirectoryName(path))=="Contents")path=Path.GetDirectoryName(Path.GetDirectoryName(path))!;
   var parts=path[Path.GetPathRoot(path)!.Length..].Split(Path.DirectorySeparatorChar,StringSplitOptions.RemoveEmptyEntries);var resolved=Path.GetPathRoot(path)!;
@@ -15,8 +15,10 @@ public static class InstallationLease {
   var key=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
   var basePath=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ChroniclesUpdater",key);Directory.CreateDirectory(basePath);return basePath;
  }
- public static IDisposable? TryAcquire(string installationRoot){
-  var file=Path.Combine(StateDirectory(installationRoot),"installation.lock");
+ public static IDisposable? TryAcquireLauncher(string root)=>Acquire(root,"launcher.lock");
+ public static IDisposable? TryAcquire(string installationRoot)=>Acquire(installationRoot,"installation.lock");
+ private static IDisposable? Acquire(string installationRoot,string name){
+  var file=Path.Combine(StateDirectory(installationRoot),name);
   try{return new FileStream(file,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);}catch(IOException){return null;}
  }
 }

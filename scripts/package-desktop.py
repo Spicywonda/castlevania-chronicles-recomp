@@ -91,16 +91,17 @@ No game data is included.
 # The manifest owns distributed files only; no saves, ROMs, or user settings.
 install_root = app if mac else package
 manifest_files = sorted(p for p in install_root.rglob('*') if p.is_file())
-(install_root/'install-manifest.json').write_text(json.dumps({
+(install_root/('Contents/Resources/install-manifest.json' if mac else 'install-manifest.json')).write_text(json.dumps({
     'Schema': 1, 'Version': version, 'Rid': rid,
     'Files': [{'Path': p.relative_to(install_root).as_posix(), 'Size': p.stat().st_size,
                'Sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
-               'UnixMode': p.stat().st_mode & 0o777} for p in manifest_files]
+               'UnixMode': p.stat().st_mode & 0o777,
+               'PlatformSigned': mac and p.read_bytes()[:4] in (bytes.fromhex('cffaedfe'),bytes.fromhex('cefaedfe'),bytes.fromhex('feedfacf'),bytes.fromhex('feedface'),bytes.fromhex('cafebabe'),bytes.fromhex('bebafeca'))} for p in manifest_files]
 }))
 if mac:
     subprocess.run(['codesign','--force','--deep','--sign','-',str(app)],check=True)
     subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
-archive=build/(name+('.zip' if win or mac else '.tar.gz'))
+archive=build/(f'CastlevaniaChronicles-{version}-{rid}'+('.zip' if win or mac else '.tar.gz'))
 if mac: subprocess.run(['ditto','-c','-k','--sequesterRsrc','--keepParent',str(package),str(archive)],check=True)
 elif win:
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:

@@ -20,6 +20,8 @@ try {
  LeaseChecks.Run(scratch);
  TransactionChecks.Run(scratch);
  await CoordinatorChecks.Run(scratch);
+ await DownloadChecks.Run(scratch);
+ await HelperChecks.Run(scratch);
 } finally {Directory.Delete(scratch,true);}
 sealed class Reply(string body,HttpStatusCode status=HttpStatusCode.OK):HttpMessageHandler {
  protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)=>Task.FromResult(new HttpResponseMessage(status){Content=new StringContent(body,Encoding.UTF8,"application/json")});

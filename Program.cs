@@ -6,6 +6,10 @@ using GameRuntime = RecompOne.Runtime.Runtime;
 using var installationLease = ChroniclesLauncher.Updates.InstallationLease.TryAcquire(AppContext.BaseDirectory);
 if (installationLease is null) { Console.Error.WriteLine("This installation is in use or being updated. Close the other game and try again."); return 1; }
 
+if (ChroniclesLauncher.Updates.UpdateHelper.HasPending(ChroniclesLauncher.Updates.InstallationLease.CanonicalRoot(AppContext.BaseDirectory))) { Console.Error.WriteLine("An update needs recovery. Open Play before starting the game directly."); return 1; }
+return RunGame(args);
+
+static int RunGame(string[] args) {
 if (args.Length == 2 && args[0] == "--validate-disc")
 {
     try
@@ -79,3 +83,5 @@ GameRuntime.Run(() =>
     }
 });
 return exitCode;
+
+}
