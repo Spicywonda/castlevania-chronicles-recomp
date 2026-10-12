@@ -1,0 +1,65 @@
+--- a/RecompOne.Runtime/Host/InputManager.cs
++++ b/RecompOne.Runtime/Host/InputManager.cs
+@@ -101,8 +101,12 @@
+ 
+ 
+         PollGamepadEvents();
+-        PollKeyboard();
+-        PollGamepads();
++        var (state, state2) = PollKeyboard();
++        PollGamepads(ref state, ref state2);
++        // Publish only the combined keyboard/gamepad buttons. The game thread
++        // also polls while paused and must never see a keyboard-only release.
++        Controller.State = state;
++        Controller.State2 = state2;
+         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
+     }
+ 
+@@ -293,18 +297,11 @@
+         return ctrl;
+     }
+ 
+-    private static void PollKeyboard()
++    private static (ushort State, ushort State2) PollKeyboard()
+     {
+         var kb = _keyboard;
+-        if (kb == null)
+-        {
+-            Controller.State = 0xFFFF;
+-            Controller.State2 = 0xFFFF;
+-            return;
+-        }
+-
+-        Controller.State = KeyState(kb, ConfigManager.Game.Keys);
+-        Controller.State2 = KeyState(kb, ConfigManager.Game.Keys2);
++        return kb == null ? ((ushort)0xFFFF, (ushort)0xFFFF)
++            : (KeyState(kb, ConfigManager.Game.Keys), KeyState(kb, ConfigManager.Game.Keys2));
+     }
+ 
+     private static ushort KeyState(IKeyboard kb, KeyBindings cfg)
+@@ -345,14 +342,14 @@
+                cfg.Up.Length > 0 || cfg.Down.Length > 0 || cfg.Left.Length > 0 || cfg.Right.Length > 0;
+     }
+ 
+-    private static void PollGamepads()
++    private static void PollGamepads(ref ushort state, ref ushort state2)
+     {
+         if (_sdl == null) return;
+ 
+         if (_pad0 != null)
+         {
+             var bind = ConfigManager.Game.PadFor(0);
+-            Controller.State = PadState(_pad0, bind, Controller.State);
++            state = PadState(_pad0, bind, state);
+             Controller.LeftX = Axis(_pad0, bind.LeftStickX);
+             Controller.LeftY = Axis(_pad0, bind.LeftStickY);
+             Controller.RightX = Axis(_pad0, bind.RightStickX);
+@@ -362,7 +359,7 @@
+         if (_pad1 != null)
+         {
+             var bind = ConfigManager.Game.PadFor(1);
+-            Controller.State2 = PadState(_pad1, bind, Controller.State2);
++            state2 = PadState(_pad1, bind, state2);
+             Controller.LeftX2 = Axis(_pad1, bind.LeftStickX);
+             Controller.LeftY2 = Axis(_pad1, bind.LeftStickY);
+             Controller.RightX2 = Axis(_pad1, bind.RightStickX);
