@@ -7,7 +7,7 @@ The ROM selector checks this repository's latest normal release when opened.
 Checks and downloads run in the background. You can play without Internet or
 while a download is in progress. **Later** postpones installation for this session.
 After a verified download, an idle launcher shows a ten-second restart countdown.
-An active game prevents installation. **Retry** explicitly retries a failed update.
+An active game prevents installation. The normal launcher has no update panel or manual check button; an update notice appears only for a download, installation or error. **Retry** explicitly retries a failed update.
 
 Downloads must match their GitHub SHA-256 digest, platform, version and installation
 manifest. The updater rejects drafts, prereleases, older versions and incomplete

@@ -14,6 +14,10 @@
   <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/issues">Report an issue</a>
 </p>
 
+## Launcher updates
+
+The upcoming **0.3.10** launcher checks for newer normal releases at startup, downloads in the background and restarts when idle. **Later** postpones installation; failed startup restores the previous version. Older launchers require one manual download. See [auto-update details](docs/auto-updates.md).
+
 ## Download
 
 **0.3.9 is a development preview.** Full-game compatibility is still being tested.
