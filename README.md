@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/tag/v0.3.9">Download 0.3.9</a> ·
+  <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/tag/v0.3.10">Download 0.3.10</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#controls-and-cheats">Controls &amp; cheats</a> ·
   <a href="https://github.com/Spicywonda/castlevania-chronicles-recomp/issues">Report an issue</a>
@@ -16,20 +16,20 @@
 
 ## Launcher updates
 
-The upcoming **0.3.10** launcher checks for newer normal releases at startup, downloads in the background and restarts when idle. **Later** postpones installation; failed startup restores the previous version. Older launchers require one manual download. See [auto-update details](docs/auto-updates.md).
+The **0.3.10** launcher checks for newer normal releases at startup, downloads in the background and restarts when idle. **Later** postpones installation; failed startup restores the previous version. Older launchers require one manual download. See [auto-update details](docs/auto-updates.md).
 
 ## Download
 
-**0.3.9 is a development preview.** Full-game compatibility is still being tested.
+**0.3.10 is a normal release.** Full-game compatibility is still being tested. Users on 0.3.9 must download this version manually once to get automatic updates.
 
 | Platform | Download |
 | --- | --- |
-| Windows x64 | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-win-x64.zip) |
-| macOS Apple Silicon | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-osx-arm64.zip) |
-| Linux x64 | [tar.gz](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/CastlevaniaChronicles-0.3.9-linux-x64.tar.gz) |
+| Windows x64 | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.10/CastlevaniaChronicles-0.3.10-win-x64.zip) |
+| macOS Apple Silicon | [ZIP](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.10/CastlevaniaChronicles-0.3.10-osx-arm64.zip) |
+| Linux x64 | [tar.gz](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.10/CastlevaniaChronicles-0.3.10-linux-x64.tar.gz) |
 
 Packages include the .NET runtime. A separate .NET installation is not required.
-[SHA-256 checksums](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.9/SHA256SUMS-0.3.9.txt) are provided with the release.
+[SHA-256 checksums](https://github.com/Spicywonda/castlevania-chronicles-recomp/releases/download/v0.3.10/SHA256SUMS-0.3.10.txt) are provided with the release.
 
 ## Getting started
 
@@ -44,7 +44,14 @@ On Linux, optionally run `./install-desktop.sh` from the extracted folder to add
 
 Detailed guides: [Windows](docs/windows.md) · [macOS](docs/macos.md) · [Linux](docs/linux.md).
 
-## What's new in 0.3.9
+## What's new in 0.3.10
+
+- Automatic updates from normal GitHub releases, with background downloads, deferred installation and failed-start rollback.
+- No permanent update panel or manual check button in the ROM selector.
+- Fixed a controller input race that could immediately leave pause while Start was held.
+- Native updater checks passed on Windows, macOS and Linux. The reported boss-defeat/orb sound issue remains open.
+
+## Previously in 0.3.9
 
 - Movie playback waits for the next frame without repeatedly restarting disc reads and discarding queued audio.
 - The illustration gallery refreshes correctly, and opening the interview waits for the selection button to be released before accepting a skip.
