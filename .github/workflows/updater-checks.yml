@@ -2,7 +2,7 @@ name: Updater checks
 on:
   workflow_dispatch:
   push:
-    branches: ['codex/launcher-auto-update']
+    branches: ['main']
   pull_request:
     paths: ['launcher/**', 'tests/Updater*/**', 'Directory.Build.props', '.github/workflows/updater-checks.yml']
 permissions:

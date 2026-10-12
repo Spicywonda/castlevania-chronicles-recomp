@@ -21,3 +21,6 @@ interface.ini
 crash-*.bin
 live-*.json
 *.log
+
+# Local development planning
+/docs/superpowers/
