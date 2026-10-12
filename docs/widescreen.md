@@ -39,3 +39,35 @@ The synthetic checks cover start, partial scroll, full scroll, and original-mode
 ## October 9 scope correction
 
 Five new regression cases reproduced background writes in intro/loading states and unrelated stage overlays. Shared eligibility now prevents those writes and terrain-packet emission. All 12 widescreen checks pass. This establishes state isolation, not correct scenery or enemy behavior at every room edge.
+
+## October 12: presentation transition correction
+
+A native OpenGL regression reproduced a stale wide render target being presented
+with width 342 and aspect 0 after switching back to 4:3. The presenter now clips
+old side margins to the currently requested mode and offsets the texture origin
+so the original 256-pixel center is preserved. This also avoids stretching a
+normal render target before a wide replacement exists.
+
+`tests/WidescreenGpuChecks` verifies both output dimensions/aspect and actual GPU
+pixels using differently colored center/side regions. It passed on macOS Gl33.
+Windows/Linux use the same corrected presenter but have not yet run this native
+GPU regression. `tests/WidescreenReferenceChecks` compares 32 margin packets with
+the game's original tile routines across scroll positions and all four flip
+combinations; these cases pass. Neither suite proves full-stage correctness.
+
+## Required before 1.0
+
+Widescreen remains experimental until these checks are complete:
+
+- Validate scenery and room boundaries in all eight stage overlays, in Original
+  and Arrange; enable additional stages only after their drawing paths are checked.
+- Verify enemy/item visibility and activation at both new edges without changing
+  collision, timers, AI behavior or the 4:3 reference gameplay.
+- Check camera locks, scrolling transitions, boss entrances and stage exits.
+- Preserve HUD layout and sprite proportions; menus, artwork and movies retain
+  their intended aspect ratio.
+- Validate graphics packet capacity and repeated switches between modes.
+- Repeat visual and performance checks on Windows, macOS and Linux.
+
+The Graphics option and this transition correction do not satisfy the complete
+1.0 gate. No 1.0 release should be published while the checks above are pending.

@@ -1,0 +1,26 @@
+--- a/RecompOne.Runtime/Gpu/Backends/Common/GlCore.cs
++++ b/RecompOne.Runtime/Gpu/Backends/Common/GlCore.cs
+@@ -1009,9 +1009,12 @@
+                 if (src == null || rt.LastDrawFrame > src.LastDrawFrame) src = rt;
+             }
+ 
+-        var w1x = src != null ? w + src.Margin * 2 : w;
++        // An older surface may still have side margins after a mode/scene change.
++        // Present only margins that both the current mode and source contain.
++        var displayMargin = Math.Min(src?.Margin ?? 0, GpuHle.WideMargin(w));
++        var w1x = w + displayMargin * 2;
+         var h1x = h;
+-        var aspect = src is { Margin: > 0 } ? GpuHle.WideAspect :
++        var aspect = displayMargin > 0 ? GpuHle.WideAspect :
+             src != null ? GpuHle.SourceAspect : GpuHle.OutputAspect;
+ 
+ 
+@@ -1041,7 +1044,7 @@
+         }
+         else if (src != null)
+         {
+-            _gl.Uniform2(_uPresentOrigin, (float)(dispX - src.X), dispY - src.Y);
++            _gl.Uniform2(_uPresentOrigin, (float)(dispX - src.X + src.Margin - displayMargin), dispY - src.Y);
+             _gl.Uniform2(_uPresentSize, (float)w1x, h1x);
+             _gl.Uniform2(_uPresentTexSize, (float)src.Wide1x, src.H);
+         }
