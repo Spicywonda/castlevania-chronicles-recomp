@@ -4,6 +4,9 @@ using RecompOne.Runtime.Dispatch;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Hle;
 using Silk.NET.Input;
+using ImGuiNET;
+using RecompOne.Runtime.Config;
+using RecompOne.Runtime.Host.Window;
 
 namespace Chronicles;
 
@@ -18,17 +21,45 @@ public static class Widescreen
         var handler = memory.ReadU32(0x800107A8 + (uint)type * 4);
         return handler is 0x800221DC or 0x800221F0 ? 43u : 0;
     }
-    public static bool Enabled { get; set; }
+    private static volatile bool _enabled;
+    private static bool _initialized;
+    private const string PreferenceKey = "Chronicles.Widescreen";
+    public static bool Enabled { get => _enabled; set => _enabled = value; }
     private static readonly Stack<(uint Address, ushort X, ushort Width, ushort Scroll)> _backgrounds = new();
 
     public static void Initialize()
     {
-        var experimental = Environment.GetEnvironmentVariable("CHRONICLES_WIDESCREEN") == "1";
-        Enabled = experimental;
+        Enabled = ConfigManager.View.GetBool(PreferenceKey,
+            Environment.GetEnvironmentVariable("CHRONICLES_WIDESCREEN") == "1");
+        if (_initialized) return;
+        _initialized = true;
+        Localization.Merge("""
+        {"strings": {
+          "chronicles.graphics": {"en": "Graphics"},
+          "chronicles.widescreen": {"en": "Widescreen (16:9, experimental)"},
+          "chronicles.widescreen.hint": {"en": "Shows more scenery in supported first-stage gameplay. Menus, videos and other stages stay 4:3. Side-edge rendering is still experimental."}
+        }}
+        """);
+        MenuRegistry.Menu("chronicles.graphics").After("chronicles.controls")
+            .Check("chronicles.widescreen", () => Enabled, SetPreference, "F8")
+            .Tooltip("chronicles.widescreen.hint");
+        SettingsRegistry.Extend("display", () => {
+            ImGui.Separator();
+            var enabled = Enabled;
+            if (ImGui.Checkbox(Localization.T("chronicles.widescreen"), ref enabled)) SetPreference(enabled);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("chronicles.widescreen.hint"));
+        });
         Event.AddListener<KeyboardEvent>(e =>
         {
-            if (experimental && e.Key == (int)Key.F8 && e.Pressed && !e.Repeat) Enabled = !Enabled;
+            if (e.Key == (int)Key.F8 && e.Pressed && !e.Repeat) SetPreference(!Enabled);
         });
+    }
+
+    public static void SetPreference(bool enabled)
+    {
+        Enabled = enabled;
+        ConfigManager.View.SetBool(PreferenceKey, enabled);
+        ConfigManager.SaveView(PanelManager.Panels);
     }
 
     private static bool IsSupportedGameplay(IMemory memory) =>

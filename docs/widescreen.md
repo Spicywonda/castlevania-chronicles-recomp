@@ -8,7 +8,7 @@ The goal is a 16:9 view with more scenery visible, original sprite proportions, 
 CHRONICLES_WIDESCREEN=1 ./scripts/run-macos.sh
 ```
 
-F8 toggles the experiment. The default is 4:3. Menus retain 4:3 and HUD elements retain their central positions. The extension is restricted to the `stage1` overlay and gameplay states 15–22 with stage index 0. Introduction, loading and menu states retain 4:3. Background, terrain and actor margins share the gameplay guard, including when a previous frame still had a wide viewport.
+Open the in-game menu with F1, then choose **Graphics → Widescreen (16:9, experimental)**. The same option is available in **System → Settings → Display**. F8 also toggles it; the choice is saved automatically and applies on the next game frame. A saved choice takes precedence over the environment variable. The default is 4:3. Menus retain 4:3 and HUD elements retain their central positions. The extension is restricted to the `stage1` overlay and gameplay states 15–22 with stage index 0. Introduction, loading and menu states retain 4:3. Background, terrain and actor margins share the gameplay guard, including when a previous frame still had a wide viewport.
 
 ## Rendering approach
 

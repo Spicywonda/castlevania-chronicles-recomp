@@ -12,6 +12,26 @@ void Require(bool condition, string message)
 {
     if (!condition) throw new Exception(message);
 }
+Check("Widescreen preference survives reload without changing other graphics settings", () =>
+{
+    var cwd = Environment.CurrentDirectory;
+    var scratch = Path.Combine(Path.GetTempPath(), "chronicles-wide-" + Guid.NewGuid());
+    Directory.CreateDirectory(scratch);
+    var gui = ImGuiNET.ImGui.CreateContext();
+    try {
+        Environment.CurrentDirectory = scratch;
+        RecompOne.Runtime.Config.ConfigManager.View.VSync = true;
+        Widescreen.SetPreference(true);
+        Widescreen.Enabled = false;
+        RecompOne.Runtime.Config.ConfigManager.Load();
+        Widescreen.Initialize();
+        Require(Widescreen.Enabled, "Saved widescreen preference was ignored");
+        Require(RecompOne.Runtime.Config.ConfigManager.View.VSync, "Widescreen changed VSync");
+        Widescreen.SetPreference(false);
+        RecompOne.Runtime.Config.ConfigManager.Load();
+        Require(!RecompOne.Runtime.Config.ConfigManager.View.GetBool("Chronicles.Widescreen"), "Disable was not saved");
+    } finally { Environment.CurrentDirectory = cwd; ImGuiNET.ImGui.DestroyContext(gui); Directory.Delete(scratch, true); }
+});
 foreach (var scroll in new[] { 0, 20, 100 })
 Check($"Background extends visible map and restores game state at scroll {scroll}", () =>
 {
