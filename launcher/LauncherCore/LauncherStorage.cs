@@ -8,11 +8,18 @@ public static class LauncherStorage
 
     public static string DataDirectory => Environment.GetEnvironmentVariable("CHRONICLES_DATA_DIR") is { Length: > 0 } custom
         ? Path.GetFullPath(custom)
-        : OperatingSystem.IsMacOS()
+        : PortableDirectory(AppContext.BaseDirectory) ?? (OperatingSystem.IsMacOS()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Castlevania Chronicles Recomp")
             : OperatingSystem.IsWindows()
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CastlevaniaChroniclesRecomp")
-                : Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"), "castlevania-chronicles-recomp");
+                : Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"), "castlevania-chronicles-recomp"));
+
+    public static string? PortableDirectory(string installation)
+    {
+        var root = Updates.InstallationLease.CanonicalRoot(installation);
+        var directory = root + ".data";
+        return Directory.Exists(directory) ? directory : null;
+    }
 
     public static string? LoadSelectedPath(string dataDirectory)
     {
@@ -20,7 +27,8 @@ public static class LauncherStorage
         {
             var path = Path.Combine(dataDirectory, "launcher.json");
             if (!File.Exists(path)) return null;
-            return JsonSerializer.Deserialize<Settings>(File.ReadAllText(path))?.DiscPath;
+            var disc = JsonSerializer.Deserialize<Settings>(File.ReadAllText(path))?.DiscPath;
+            return string.IsNullOrEmpty(disc) ? null : Path.GetFullPath(disc, dataDirectory);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -31,6 +39,8 @@ public static class LauncherStorage
     public static void SaveSelectedPath(string dataDirectory, string discPath)
     {
         Directory.CreateDirectory(dataDirectory);
+        if (PortableDirectory(AppContext.BaseDirectory) == dataDirectory && Path.IsPathFullyQualified(discPath))
+            discPath = Path.GetRelativePath(dataDirectory, discPath);
         var path = Path.Combine(dataDirectory, "launcher.json");
         var temp = path + ".tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(new Settings(discPath)));

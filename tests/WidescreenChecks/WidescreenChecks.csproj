@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../patches/Widescreen.cs" Link="Widescreen.cs" />
+    <Compile Include="../../patches/WorldViewport.cs" Link="WorldViewport.cs" />
     <Compile Include="../../patches/TileMargins.cs" Link="TileMargins.cs" />
     <ProjectReference Include="../../vendor/RecompOne/RecompOne.Runtime/RecompOne.Runtime.csproj" />
   </ItemGroup>

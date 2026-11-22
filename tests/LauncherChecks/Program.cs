@@ -24,6 +24,18 @@ var root = Path.Combine(Path.GetTempPath(), "chronicles-launcher-checks-" + Guid
 Directory.CreateDirectory(root);
 try
 {
+    Check("Portable launcher and runtime share movable storage", () =>
+    {
+        var install = Path.Combine(root, "Game");
+        var runtime = Path.Combine(install, "runtime");
+        Directory.CreateDirectory(runtime);
+        Require(LauncherStorage.PortableDirectory(install) == null, "Unexpected portable mode");
+        var data = Directory.CreateDirectory(ChroniclesLauncher.Updates.InstallationLease.CanonicalRoot(install) + ".data").FullName;
+        Require(LauncherStorage.PortableDirectory(runtime) == data, "Game and launcher disagree");
+        Require(ChroniclesLauncher.Updates.InstallationLease.StateDirectory(install) == Path.Combine(data, "updater"), "Updater state outside portable storage");
+        File.WriteAllText(Path.Combine(data, "launcher.json"), """{"DiscPath":"disc/game.cue"}""");
+        Require(LauncherStorage.LoadSelectedPath(data) == Path.Combine(data, "disc", "game.cue"), "Moved disc path did not resolve");
+    });
     Check("Missing image is rejected", () =>
     {
         var result = DiscSelection.Validate(Path.Combine(root, "missing.cue"));

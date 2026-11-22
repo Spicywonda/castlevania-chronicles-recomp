@@ -11,6 +11,11 @@ public static class InstallationLease {
   return Path.TrimEndingDirectorySeparator(resolved);
  }
  public static string StateDirectory(string installationRoot){
+  if (LauncherStorage.PortableDirectory(installationRoot) is { } portable) {
+   var state = Path.Combine(portable, "updater");
+   Directory.CreateDirectory(state);
+   return state;
+  }
   var canonical=CanonicalRoot(installationRoot);if(OperatingSystem.IsWindows())canonical=canonical.ToUpperInvariant();
   var key=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
   var basePath=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ChroniclesUpdater",key);Directory.CreateDirectory(basePath);return basePath;

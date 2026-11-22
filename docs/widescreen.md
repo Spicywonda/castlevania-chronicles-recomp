@@ -71,3 +71,58 @@ Widescreen remains experimental until these checks are complete:
 
 The Graphics option and this transition correction do not satisfy the complete
 1.0 gate. No 1.0 release should be published while the checks above are pending.
+
+## October 13: first-stage sprite edge correction
+
+A direct call to the game's `func_80106E3C` reproduced a missing sprite at
+x = -32 during supported widescreen gameplay. This pure drawing helper still
+used the original viewport. Its horizontal visibility checks now include the
+43-pixel margins. Sprite margins also check the current stage and gameplay
+state, preventing a stale wide display value from extending loading screens.
+
+The generator composes multiple patches to the same source file before writing,
+so both first-stage drawing patches survive generation and repeated builds.
+`WidescreenReferenceChecks` passes 112 real sprite draw cases (including both
+orientations, side limits, original mode and transitions), verifies actor bytes
+and calling convention preservation, and still passes the 32 tile packet
+comparisons. All 13 `WidescreenChecks` pass. These are shared code changes;
+full visual validation across stages and operating systems remains pending.
+
+## October 13: reproduced bridge boundary corruption
+
+The reported first-room bridge discontinuity was reproduced interactively in
+16:9 and compared with 4:3. A local RAM capture places the camera at x=768,
+y=32 and the foreground map at 32 columns by 8 rows. Its right edge is x=1024.
+The original 9x9 tile loop reads a ninth column past that edge, wrapping into
+the following row. Widescreen reveals those normally hidden packets as an
+unrelated piece of ground and vegetation.
+
+TileMargins now removes out-of-map packets from that draw call's ordering
+chain before adding valid margin tiles. Packet storage, ordering of valid
+tiles and the previous ordering-table head are preserved. The correction only
+runs near map boundaries and only in eligible widescreen gameplay. Regression
+cases cover both original tile routines, all four flips and unchanged 4:3
+packet counts. This removes invalid tiles; it does not supply the next room's
+scenery. A complete solution still requires room-edge camera framing and
+transition validation before widescreen can be called finished.
+
+## October 13: first-room rendering-only framing
+
+The verified outdoor room now shifts emitted world geometry at its two ends
+so the 342-pixel viewport stays inside the 1024-pixel map. Camera x is clamped
+for presentation to [43,725]; the game's camera value is never written. Player,
+actor and scenery drawing scopes translate new polygon/sprite packets, while
+the HUD stays in its original centered position. Tile/background margins follow
+the same framing. This is deliberately gated to room 0 and its known map.
+
+`WidescreenSceneChecks` accepts private local RAM/VRAM captures as arguments
+and renders the same room at camera x=0,400,768 in both 4:3 and 16:9 using the
+native GPU. The six macOS Gl33 renders were inspected: the bridge's stray
+vegetation/ground and vertical boundary discontinuity are absent, with scenery
+also covering the starting edge. The comparison additionally found identical
+RAM below the scratch graphics arena in both modes, except the packet cursor.
+The test captures and rendered copyrighted game imagery are not repository assets.
+
+This verifies static views of this room, not every room transition, boss or
+platform. Further room profiles and native Windows/Linux visual checks remain
+required before calling widescreen complete or publishing 1.0.

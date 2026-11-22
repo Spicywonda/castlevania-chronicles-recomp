@@ -141,3 +141,9 @@ macOS packaging requires Apple's signing and packaging tools. Build outputs are 
 Maintained by [Spicywonda](https://github.com/Spicywonda), using RecompOne and its upstream contributors' work. See the bundled dependency licenses.
 
 Castlevania and the supplied promotional artwork belong to their respective rights holders. This is an unofficial fan project and is not affiliated with or endorsed by Konami. You must provide your own disc image.
+
+## Portable storage
+
+Keep the application and its data together on a writable drive. Before starting Play, create an empty sibling folder with the installation folder's exact name followed by `.data`. For example, place `CastlevaniaChronicles-win-x64` and `CastlevaniaChronicles-win-x64.data` side by side. On macOS include the full bundle name, for example `Castlevania Chronicles.app.data`.
+
+Move both together. Memory cards, settings, logs and updater state stay in the data folder across application updates. To carry the disc selection between devices, keep the disc on the same drive and select it through Play. To bring existing saves, close the game and copy your memory cards into the data folder before starting.

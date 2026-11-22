@@ -29,7 +29,9 @@ public static class DiscSelection
                 foreach (var match in files)
                 {
                     var name = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
-                    if (!File.Exists(Path.Combine(Path.GetDirectoryName(path)!, name)))
+                    var trackPath = Path.Combine(Path.GetDirectoryName(path)!, name);
+                    var track = new FileInfo(trackPath);
+                    if (!track.Exists || (track.LinkTarget != null && track.ResolveLinkTarget(true)?.Exists != true))
                         return new(null, $"Missing BIN file referenced by the CUE: {name}");
                 }
             }

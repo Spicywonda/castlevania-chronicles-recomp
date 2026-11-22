@@ -35,3 +35,10 @@ foreach(ushort flags in new ushort[]{0,1,2,3}) {
  cases++;
 }
 Console.WriteLine($"PASS {cases} margin packets match original game routines, including scrolling and all tile flips");
+SpriteEdgeChecks.Run();
+
+RoomEdgeChecks.Run();
+
+ViewportChecks.Run();
+
+ParallaxChecks.Run();

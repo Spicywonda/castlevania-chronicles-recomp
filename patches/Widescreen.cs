@@ -12,14 +12,14 @@ namespace Chronicles;
 
 public static class Widescreen
 {
-    public static int SpriteMargin => Enabled && Display.WideAspect > 0 ? 43 : 0;
+    public static int SpriteMarginFor(IMemory memory) => CanExtend(memory) ? 43 + Math.Abs(WorldViewport.Shift(memory)) : 0;
     public static uint ActorMargin(IMemory memory, uint actor)
     {
         if (!CanExtend(memory)) return 0;
         int type = memory.ReadU8(actor + 1) - 12;
         if (type < 0 || type >= 25) return 0;
         var handler = memory.ReadU32(0x800107A8 + (uint)type * 4);
-        return handler is 0x800221DC or 0x800221F0 ? 43u : 0;
+        return handler is 0x800221DC or 0x800221F0 ? (uint)SpriteMarginFor(memory) : 0;
     }
     private static volatile bool _enabled;
     private static bool _initialized;
@@ -84,10 +84,14 @@ public static class Widescreen
         }
         var x = memory.ReadU16(p + 4);
         var scroll = memory.ReadU16(p + 12);
-        var left = Math.Clamp((int)(short)scroll, 0, 43);
+        var shift = WorldViewport.Shift(memory);
+        // GsSortFastBg wraps its map coordinates, including negative scroll.
+        // Parallax scroll advances more slowly than the camera: clamping this
+        // margin to scroll leaves a widening uncovered strip at the left edge.
+        var left = 43 + shift;
         _backgrounds.Push((p, x, 256, scroll));
         memory.WriteU16(p + 4, (ushort)(x - left));
-        memory.WriteU16(p + 8, (ushort)(299 + left));
+        memory.WriteU16(p + 8, (ushort)(299 - shift + left));
         memory.WriteU16(p + 12, (ushort)(scroll - left));
     }
 

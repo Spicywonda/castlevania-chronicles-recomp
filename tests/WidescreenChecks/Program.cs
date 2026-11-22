@@ -44,10 +44,10 @@ Check($"Background extends visible map and restores game state at scroll {scroll
     m.WriteU16(p + 10, 32); m.WriteU16(p + 12, (ushort)scroll);
     Widescreen.Enabled = true;
     Widescreen.BeforeBackground(c, m);
-    int left = scroll == 0 ? 0 : scroll == 20 ? 20 : 43;
+    int left = 43;
     Require(m.ReadU16(p + 4) == 128 - left, "Screen origin was not extended");
     Require(m.ReadU16(p + 8) == 299 + left, "New visible columns were not requested");
-    Require(m.ReadU16(p + 12) == scroll - left, "World alignment changed");
+    Require((short)m.ReadU16(p + 12) == scroll - left, "World alignment changed");
     c.A0 = 0;
     Widescreen.AfterBackground(c, m);
     Require(m.ReadU16(p + 4) == 128 && m.ReadU16(p + 8) == 256 && m.ReadU16(p + 12) == scroll,
@@ -115,7 +115,7 @@ Check("Sprite margins preserve original mode and stateful actor handlers", () =>
     m.WriteU32(0x800107A8, 0x800221DC);
     Widescreen.Enabled = true;
     RecompOne.Runtime.Hle.Display.WideAspect = 16f / 9f;
-    Require(Widescreen.SpriteMargin == 43, "Stage sprites still use the old viewport");
+    Require(Widescreen.SpriteMarginFor(m) == 43, "Stage sprites still use the old viewport");
     Require(Widescreen.ActorMargin(m, actor) == 43, "Pure sprite handler still culled");
     foreach (uint handler in new uint[] { 0x800221C8, 0x80022204, 0x80022218, 0 })
     {
@@ -125,7 +125,7 @@ Check("Sprite margins preserve original mode and stateful actor handlers", () =>
     m.WriteU32(0x800107A8, 0x800221F0);
     Require(Widescreen.ActorMargin(m, actor) == 43, "Pickup sprite handler still culled");
     Widescreen.Enabled = false;
-    Require(Widescreen.SpriteMargin == 0 && Widescreen.ActorMargin(m, actor) == 0, "4:3 bounds changed");
+    Require(Widescreen.SpriteMarginFor(m) == 0 && Widescreen.ActorMargin(m, actor) == 0, "4:3 bounds changed");
     Widescreen.Enabled = true;
     RecompOne.Runtime.Hle.Display.WideAspect = 0;
     Require(Widescreen.ActorMargin(m, actor) == 0, "Menu bounds changed");

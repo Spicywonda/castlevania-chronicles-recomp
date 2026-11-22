@@ -5,7 +5,7 @@ namespace Chronicles;
 
 public static class TileMargins
 {
-    private readonly record struct Call(uint Background, uint OrderingTable, uint Depth, uint EmptyPage, int UvExtent);
+    private readonly record struct Call(uint Background, uint OrderingTable, uint Depth, uint EmptyPage, int UvExtent, uint PacketStart, uint PreviousHead);
     private static readonly Stack<Call> _calls = new();
 
     public static void Before31(CpuContext cpu, IMemory memory) => Before(cpu, memory, 31);
@@ -13,7 +13,9 @@ public static class TileMargins
     private static void Before(CpuContext cpu, IMemory memory, int uvExtent)
     {
         _calls.Push(Widescreen.CanExtend(memory) && cpu.RA >= 0x80100000 && cpu.RA < 0x8011C800
-            ? new(cpu.A0, cpu.A1, cpu.A2 & 0xFFFF, cpu.A3 & 0xFF, uvExtent) : default);
+            ? new(cpu.A0, cpu.A1, cpu.A2 & 0xFFFF, cpu.A3 & 0xFF, uvExtent,
+                memory.ReadU32(0x80097CA8),
+                memory.ReadU32(memory.ReadU32(cpu.A1 + 4) + (cpu.A2 & 0xFFFF) * 4)) : default);
     }
 
     public static void After(CpuContext cpu, IMemory memory)
@@ -26,11 +28,32 @@ public static class TileMargins
         if (columns < 1 || columns > 1024 || rows < 1 || rows > 1024) return;
         var tiles = memory.ReadU32(map + 8);
         var firstOriginal = scrollX >> 5;
-        var first = Math.Max(0, (scrollX - 43) >> 5);
-        var last = Math.Min(columns - 1, (scrollX + 298) >> 5);
+        var shift = WorldViewport.Shift(memory);
+        var first = Math.Max(0, (scrollX - 43 - shift) >> 5);
+        var last = Math.Min(columns - 1, (scrollX + 298 - shift) >> 5);
         var firstRow = scrollY >> 5;
         var packet = memory.ReadU32(0x80097CA8);
         var ot = memory.ReadU32(call.OrderingTable + 4) + call.Depth * 4;
+        // Original 9x9 drawing can read past a map edge. Those packets are
+        // hidden by the 4:3 viewport but become visible in the extra margins.
+        // Rebuild only this call's links, preserving packet storage and order.
+        if ((firstOriginal < 0 || firstOriginal + 9 > columns || firstRow < 0 || firstRow + 9 > rows) &&
+            packet >= call.PacketStart && (packet - call.PacketStart) % 40 == 0)
+        {
+            uint head = call.PreviousHead & 0xFFFFFF;
+            for (uint p = call.PacketStart; p < packet; p += 40)
+            {
+                int x = Math.Min((short)memory.ReadU16(p + 8), (short)memory.ReadU16(p + 16));
+                int y = Math.Min((short)memory.ReadU16(p + 10), (short)memory.ReadU16(p + 26));
+                int worldX = x + scrollX;
+                int worldY = y - (short)memory.ReadU16(bg + 6) + scrollY;
+                if (worldX < 0 || worldX >= columns * 32 || worldY < 0 || worldY >= rows * 32)
+                    continue;
+                memory.WriteU32(p, 0x09000000 | head);
+                head = p & 0xFFFFFF;
+            }
+            memory.WriteU32(ot, head);
+        }
         for (var row = Math.Max(0, firstRow); row < Math.Min(rows, firstRow + 9); row++)
         for (var column = first; column <= last; column++)
         {

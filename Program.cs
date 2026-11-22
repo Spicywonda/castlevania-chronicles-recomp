@@ -45,8 +45,21 @@ ChroniclesLauncher.MemoryCardStorage.AdoptMissingCards(dataDirectory,
 Directory.SetCurrentDirectory(dataDirectory);
 Console.WriteLine($"[Storage] {dataDirectory}");
 ConfigManager.Load();
-GameRuntime.Defaults(view => view.Language = "en");
-if (cuePath != null) ConfigManager.Game.CdPath = cuePath;
+GameRuntime.Defaults(view =>
+{
+    if (string.IsNullOrWhiteSpace(view.Language))
+        view.Language = "en";
+});
+if (cuePath != null)
+{
+    var selection = ChroniclesLauncher.DiscSelection.Validate(cuePath);
+    if (!selection.IsValid) { Console.Error.WriteLine(selection.Error); return 2; }
+    ConfigManager.Game.CdPath = cuePath;
+}
+else if (!ChroniclesLauncher.DiscSelection.Validate(ConfigManager.Game.CdPath).IsValid)
+{
+    ConfigManager.Game.CdPath = "";
+}
 ConfigManager.SaveGame();
 Console.WriteLine($"[Build] Chronicles {ChroniclesLauncher.Updates.BuildVersion.Current} — stages 1–8");
 var exitCode = 0;
